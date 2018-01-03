@@ -56,6 +56,11 @@
 #include <Face_utils.h>
 #include <FaceAnalyser.h>
 #include <GazeEstimation.h>
+#include <RecorderOpenFace.h>
+#include <RecorderOpenFaceParameters.h>
+#include <SequenceCapture.h>
+#include <Visualizer.h>
+#include <VisualizationUtils.h>
 
 #ifndef CONFIG_DIR
 #define CONFIG_DIR "~"
@@ -80,8 +85,6 @@ printErrorAndAbort( std::string( "Fatal error: " ) + stream )
 
 using namespace std;
 
-using namespace boost::filesystem;
-
 vector<string> get_arguments(int argc, char **argv)
 {
 
@@ -95,1019 +98,157 @@ vector<string> get_arguments(int argc, char **argv)
 	return arguments;
 }
 
-// Useful utility for creating directories for storing the output files
-void create_directory_from_file(string output_path)
-{
-
-	// Creating the right directory structure
-	
-	// First get rid of the file
-	auto p = path(path(output_path).parent_path());
-
-	if(!p.empty() && !boost::filesystem::exists(p))		
-	{
-		bool success = boost::filesystem::create_directories(p);
-		if(!success)
-		{
-			cout << "Failed to create a directory... " << p.string() << endl;
-		}
-	}
-}
-
-void create_directory(string output_path)
-{
-
-	// Creating the right directory structure
-	auto p = path(output_path);
-
-	if(!boost::filesystem::exists(p))		
-	{
-		bool success = boost::filesystem::create_directories(p);
-		
-		if(!success)
-		{
-			cout << "Failed to create a directory..." << p.string() << endl;
-		}
-	}
-}
-
-void get_output_feature_params(vector<string> &output_similarity_aligned, vector<string> &output_hog_aligned_files, bool& visualize_track,
-	bool& visualize_align, bool& visualize_hog, bool &output_2D_landmarks, bool &output_3D_landmarks, bool &output_model_params,
-	bool &output_pose, bool &output_AUs, bool &output_gaze, vector<string> &arguments);
-
-void get_image_input_output_params_feats(vector<vector<string> > &input_image_files, bool& as_video, vector<string> &arguments);
-
-void output_HOG_frame(std::ofstream* hog_file, bool good_frame, const cv::Mat_<double>& hog_descriptor, int num_rows, int num_cols);
-
-// Some globals for tracking timing information for visualisation
-double fps_tracker = -1.0;
-int64 t0 = 0;
-
-// Visualising the results
-void visualise_tracking(cv::Mat& captured_image, const LandmarkDetector::CLNF& face_model, const LandmarkDetector::FaceModelParameters& det_parameters, cv::Point3f gazeDirection0, cv::Point3f gazeDirection1, int frame_count, double fx, double fy, double cx, double cy)
-{
-
-	// Drawing the facial landmarks on the face and the bounding box around it if tracking is successful and initialised
-	double detection_certainty = face_model.detection_certainty;
-	bool detection_success = face_model.detection_success;
-
-	double visualisation_boundary = 0.2;
-
-	// Only draw if the reliability is reasonable, the value is slightly ad-hoc
-	if (detection_certainty < visualisation_boundary)
-	{
-		LandmarkDetector::Draw(captured_image, face_model);
-
-		double vis_certainty = detection_certainty;
-		if (vis_certainty > 1)
-			vis_certainty = 1;
-		if (vis_certainty < -1)
-			vis_certainty = -1;
-
-		vis_certainty = (vis_certainty + 1) / (visualisation_boundary + 1);
-
-		// A rough heuristic for box around the face width
-		int thickness = (int)std::ceil(2.0* ((double)captured_image.cols) / 640.0);
-
-		cv::Vec6d pose_estimate_to_draw = LandmarkDetector::GetPose(face_model, fx, fy, cx, cy);
-
-		// Draw it in reddish if uncertain, blueish if certain
-		LandmarkDetector::DrawBox(captured_image, pose_estimate_to_draw, cv::Scalar((1 - vis_certainty)*255.0, 0, vis_certainty * 255), thickness, fx, fy, cx, cy);
-
-		if (det_parameters.track_gaze && detection_success && face_model.eye_model)
-		{
-			GazeAnalysis::DrawGaze(captured_image, face_model, gazeDirection0, gazeDirection1, fx, fy, cx, cy);
-		}
-	}
-
-	// Work out the framerate
-	if (frame_count % 10 == 0)
-	{
-		double t1 = cv::getTickCount();
-		fps_tracker = 10.0 / (double(t1 - t0) / cv::getTickFrequency());
-		t0 = t1;
-	}
-
-	// Write out the framerate on the image before displaying it
-	char fpsC[255];
-	std::sprintf(fpsC, "%d", (int)fps_tracker);
-	string fpsSt("FPS:");
-	fpsSt += fpsC;
-	cv::putText(captured_image, fpsSt, cv::Point(10, 20), CV_FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(255, 0, 0), 1, CV_AA);
-
-	if (!det_parameters.quiet_mode)
-	{
-		cv::namedWindow("tracking_result", 1);
-		cv::imshow("tracking_result", captured_image);
-	}
-}
-
-void prepareOutputFile(std::ofstream* output_file, bool output_2D_landmarks, bool output_3D_landmarks,
-	bool output_model_params, bool output_pose, bool output_AUs, bool output_gaze,
-	int num_face_landmarks, int num_model_modes, int num_eye_landmarks, vector<string> au_names_class, vector<string> au_names_reg);
-
-// Output all of the information into one file in one go (quite a few parameters, but simplifies the flow)
-void outputAllFeatures(std::ofstream* output_file, bool output_2D_landmarks, bool output_3D_landmarks,
-	bool output_model_params, bool output_pose, bool output_AUs, bool output_gaze,
-	const LandmarkDetector::CLNF& face_model, int frame_count, double time_stamp, bool detection_success,
-	cv::Point3f gazeDirection0, cv::Point3f gazeDirection1, cv::Vec2d gaze_angle, cv::Vec6d& pose_estimate, double fx, double fy, double cx, double cy,
-	const FaceAnalysis::FaceAnalyser& face_analyser);
-
 int main (int argc, char **argv)
 {
 
 	vector<string> arguments = get_arguments(argc, argv);
-	
-	// Some initial parameters that can be overriden from command line	
-	vector<string> input_files, output_files, tracked_videos_output;
-	
-	// Get the input output file parameters
-	
-	string output_codec; //not used but should
-	LandmarkDetector::get_video_input_output_params(input_files, output_files, tracked_videos_output, output_codec, arguments);
-
-	bool video_input = true;
-	bool images_as_video = false;
-
-	vector<vector<string> > input_image_files;
-
-	// Adding image support for reading in the files
-	if(input_files.empty())
-	{
-		vector<string> d_files;
-		vector<string> o_img;
-		vector<cv::Rect_<double>> bboxes;
-		get_image_input_output_params_feats(input_image_files, images_as_video, arguments);	
-
-		if(!input_image_files.empty())
-		{
-			video_input = false;
-		}
-
-	}
-
-	// Grab camera parameters, if they are not defined (approximate values will be used)
-	float fx = 0, fy = 0, cx = 0, cy = 0;
-	int d = 0;
-	// Get camera parameters
-	LandmarkDetector::get_camera_params(d, fx, fy, cx, cy, arguments);    
-	
-	// If cx (optical axis centre) is undefined will use the image size/2 as an estimate
-	bool cx_undefined = false;
-	bool fx_undefined = false;
-	if (cx == 0 || cy == 0)
-	{
-		cx_undefined = true;
-	}
-	if (fx == 0 || fy == 0)
-	{
-		fx_undefined = true;
-	}
-
-	vector<string> output_similarity_align;
-	vector<string> output_hog_align_files;
-
-	// By default output all parameters, but these can be turned off to get smaller files or slightly faster processing times
-	// use -no2Dfp, -no3Dfp, -noMparams, -noPose, -noAUs, -noGaze to turn them off
-	bool output_2D_landmarks = true;
-	bool output_3D_landmarks = true;
-	bool output_model_params = true;
-	bool output_pose = true;
-	bool output_AUs = true;
-	bool output_gaze = true;
-
-	bool visualize_track = false;
-	bool visualize_align = false;
-	bool visualize_hog = false;
-	get_output_feature_params(output_similarity_align, output_hog_align_files, visualize_track, visualize_align, visualize_hog,
-		output_2D_landmarks, output_3D_landmarks, output_model_params, output_pose, output_AUs, output_gaze, arguments);
-
-	// If multiple video files are tracked, use this to indicate if we are done
-	bool done = false;	
-	int f_n = -1;
-	int curr_img = -1;
 
 	// Load the modules that are being used for tracking and face analysis
 	// Load face landmark detector
 	LandmarkDetector::FaceModelParameters det_parameters(arguments);
 	// Always track gaze in feature extraction
-	det_parameters.track_gaze = true;
 	LandmarkDetector::CLNF face_model(det_parameters.model_location);
 
 	// Load facial feature extractor and AU analyser
 	FaceAnalysis::FaceAnalyserParameters face_analysis_params(arguments);
 	FaceAnalysis::FaceAnalyser face_analyser(face_analysis_params);
 
-	while(!done) // this is not a for loop as we might also be reading from a webcam
+	Utilities::SequenceCapture sequence_reader;
+
+	// A utility for visualizing the results
+	Utilities::Visualizer visualizer(arguments);
+
+	// Tracking FPS for visualization
+	Utilities::FpsTracker fps_tracker;
+	fps_tracker.AddFrame();
+
+	while (true) // this is not a for loop as we might also be reading from a webcam
 	{
+
+		// The sequence reader chooses what to open based on command line arguments provided
+		if(!sequence_reader.Open(arguments))
+			break;
+
+		INFO_STREAM("Device or file opened");
 		
-		string current_file;
-		
-		cv::VideoCapture video_capture;
-		
+		if (sequence_reader.IsWebcam())
+		{
+			INFO_STREAM("WARNING: using a webcam in feature extraction, Action Unit predictions will not be as accurate in real-time webcam mode");
+			INFO_STREAM("WARNING: using a webcam in feature extraction, forcing visualization of tracking to allow quitting the application (press q)");
+			visualizer.vis_track = true;
+		}
+
 		cv::Mat captured_image;
-		int total_frames = -1;
-		int reported_completion = 0;
-
-		double fps_vid_in = -1.0;
-
-		if(video_input)
-		{
-			// We might specify multiple video files as arguments
-			if(input_files.size() > 0)
-			{
-				f_n++;			
-				current_file = input_files[f_n];
-			}
-			else
-			{
-				// If we want to write out from webcam
-				f_n = 0;
-			}
-			// Do some grabbing
-			if( current_file.size() > 0 )
-			{
-				INFO_STREAM( "Attempting to read from file: " << current_file );
-				video_capture = cv::VideoCapture( current_file );
-				total_frames = (int)video_capture.get(CV_CAP_PROP_FRAME_COUNT);
-				fps_vid_in = video_capture.get(CV_CAP_PROP_FPS);
-
-				// Check if fps is nan or less than 0
-				if (fps_vid_in != fps_vid_in || fps_vid_in <= 0)
-				{
-					INFO_STREAM("FPS of the video file cannot be determined, assuming 30");
-					fps_vid_in = 30;
-				}
-			}
-
-			if (!video_capture.isOpened())
-			{
-				FATAL_STREAM("Failed to open video source, exiting");
-				return 1;
-			}
-			else
-			{
-				INFO_STREAM("Device or file opened");
-			}
-
-			video_capture >> captured_image;	
-		}
-		else
-		{
-			f_n++;	
-			curr_img++;
-			if(!input_image_files[f_n].empty())
-			{
-				string curr_img_file = input_image_files[f_n][curr_img];
-				captured_image = cv::imread(curr_img_file, -1);
-				total_frames = input_image_files[f_n].size();
-			}
-			else
-			{
-				FATAL_STREAM( "No .jpg or .png images in a specified drectory, exiting" );
-				return 1;
-			}
-
-			// If image sequence provided, assume the fps is 30
-			fps_vid_in = 30;
-		}	
 		
-		// If optical centers are not defined just use center of image
-		if(cx_undefined)
+		Utilities::RecorderOpenFaceParameters recording_params(arguments, true, sequence_reader.IsWebcam(),
+			sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, sequence_reader.fps);
+		Utilities::RecorderOpenFace open_face_rec(sequence_reader.name, recording_params, arguments);
+
+		if (recording_params.outputGaze() && !face_model.eye_model)
+			cout << "WARNING: no eye model defined, but outputting gaze" << endl;
+
+		captured_image = sequence_reader.GetNextFrame();
+
+		// For reporting progress
+		double reported_completion = 0;
+
+		INFO_STREAM("Starting tracking");
+		while (!captured_image.empty())
 		{
-			cx = captured_image.cols / 2.0f;
-			cy = captured_image.rows / 2.0f;
-		}
-		// Use a rough guess-timate of focal length
-		if (fx_undefined)
-		{
-			fx = 500 * (captured_image.cols / 640.0);
-			fy = 500 * (captured_image.rows / 480.0);
 
-			fx = (fx + fy) / 2.0;
-			fy = fx;
-		}
-	
-		// Creating output files
-		std::ofstream output_file;
+			// Converting to grayscale
+			cv::Mat_<uchar> grayscale_image = sequence_reader.GetGrayFrame();
 
-		if (!output_files.empty())
-		{
-			output_file.open(output_files[f_n], ios_base::out);
-			int num_eye_landmarks = LandmarkDetector::CalculateAllEyeLandmarks(face_model).size();
-		
-			prepareOutputFile(&output_file, output_2D_landmarks, output_3D_landmarks, output_model_params, output_pose, output_AUs, output_gaze, face_model.pdm.NumberOfPoints(), face_model.pdm.NumberOfModes(), num_eye_landmarks, face_analyser.GetAUClassNames(), face_analyser.GetAURegNames());
-		}
-
-		// Saving the HOG features
-		std::ofstream hog_output_file;
-		if(!output_hog_align_files.empty())
-		{
-			hog_output_file.open(output_hog_align_files[f_n], ios_base::out | ios_base::binary);
-		}
-
-		// saving the videos
-		cv::VideoWriter writerFace;
-		if(!tracked_videos_output.empty())
-		{
-			try
-			{
-				writerFace = cv::VideoWriter(tracked_videos_output[f_n], CV_FOURCC(output_codec[0],output_codec[1],output_codec[2],output_codec[3]), fps_vid_in, captured_image.size(), true);
-			}
-			catch(cv::Exception e)
-			{
-				WARN_STREAM( "Could not open VideoWriter, OUTPUT FILE WILL NOT BE WRITTEN. Currently using codec " << output_codec << ", try using an other one (-oc option)");
-			}
-
-			
-		}
-
-		int frame_count = 0;
-		
-		// This is useful for a second pass run (if want AU predictions)
-		vector<cv::Vec6d> params_global_video;
-		vector<bool> successes_video;
-		vector<cv::Mat_<double>> params_local_video;
-		vector<cv::Mat_<double>> detected_landmarks_video;
-				
-		// Use for timestamping if using a webcam
-		int64 t_initial = cv::getTickCount();
-
-		// Timestamp in seconds of current processing
-		double time_stamp = 0;
-
-		INFO_STREAM( "Starting tracking");
-		while(!captured_image.empty())
-		{		
-
-			// Grab the timestamp first
-			if (video_input)
-			{
-				time_stamp = (double)frame_count * (1.0 / fps_vid_in);				
-			}
-			else
-			{
-				// if loading images assume 30fps
-				time_stamp = (double)frame_count * (1.0 / 30.0);
-			}
-
-			// Reading the images
-			cv::Mat_<uchar> grayscale_image;
-
-			if(captured_image.channels() == 3)
-			{
-				cvtColor(captured_image, grayscale_image, CV_BGR2GRAY);				
-			}
-			else
-			{
-				grayscale_image = captured_image.clone();				
-			}
-		
 			// The actual facial landmark detection / tracking
-			bool detection_success;
-			
-			if(video_input || images_as_video)
-			{
-				detection_success = LandmarkDetector::DetectLandmarksInVideo(grayscale_image, face_model, det_parameters);
-			}
-			else
-			{
-				detection_success = LandmarkDetector::DetectLandmarksInImage(grayscale_image, face_model, det_parameters);
-			}
-			
-			// Gaze tracking, absolute gaze direction
-			cv::Point3f gazeDirection0(0, 0, -1);
-			cv::Point3f gazeDirection1(0, 0, -1);
-			cv::Vec2d gazeAngle(0, 0);
+			bool detection_success = LandmarkDetector::DetectLandmarksInVideo(grayscale_image, face_model, det_parameters);
 
-			if (det_parameters.track_gaze && detection_success && face_model.eye_model)
+			// Gaze tracking, absolute gaze direction
+			cv::Point3f gazeDirection0(0, 0, 0); cv::Point3f gazeDirection1(0, 0, 0); cv::Vec2d gazeAngle(0, 0);
+
+			if (detection_success && face_model.eye_model)
 			{
-				GazeAnalysis::EstimateGaze(face_model, gazeDirection0, fx, fy, cx, cy, true);
-				GazeAnalysis::EstimateGaze(face_model, gazeDirection1, fx, fy, cx, cy, false);
+				GazeAnalysis::EstimateGaze(face_model, gazeDirection0, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, true);
+				GazeAnalysis::EstimateGaze(face_model, gazeDirection1, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, false);
 				gazeAngle = GazeAnalysis::GetGazeAngle(gazeDirection0, gazeDirection1);
 			}
 
 			// Do face alignment
 			cv::Mat sim_warped_img;
-			cv::Mat_<double> hog_descriptor;
-			int num_hog_rows, num_hog_cols;
+			cv::Mat_<double> hog_descriptor; int num_hog_rows = 0, num_hog_cols = 0;
 
-			// But only if needed in output
-			if(!output_similarity_align.empty() || hog_output_file.is_open() || output_AUs)
+			// Perform AU detection and HOG feature extraction, as this can be expensive only compute it if needed by output or visualization
+			if (recording_params.outputAlignedFaces() || recording_params.outputHOG() || recording_params.outputAUs() || visualizer.vis_align || visualizer.vis_hog)
 			{
-				face_analyser.AddNextFrame(captured_image, face_model.detected_landmarks, face_model.detection_success, time_stamp, false, !det_parameters.quiet_mode && visualize_hog);
+				face_analyser.AddNextFrame(captured_image, face_model.detected_landmarks, face_model.detection_success, sequence_reader.time_stamp, sequence_reader.IsWebcam());
 				face_analyser.GetLatestAlignedFace(sim_warped_img);
-
-				if(!det_parameters.quiet_mode && visualize_align)
-				{
-					cv::imshow("sim_warp", sim_warped_img);			
-				}
-				if(hog_output_file.is_open() || (visualize_hog && !det_parameters.quiet_mode))
-				{
-					face_analyser.GetLatestHOG(hog_descriptor, num_hog_rows, num_hog_cols);
-
-					if(visualize_hog && !det_parameters.quiet_mode)
-					{
-						cv::Mat_<double> hog_descriptor_vis;
-						FaceAnalysis::Visualise_FHOG(hog_descriptor, num_hog_rows, num_hog_cols, hog_descriptor_vis);
-						cv::imshow("hog", hog_descriptor_vis);	
-					}
-				}
+				face_analyser.GetLatestHOG(hog_descriptor, num_hog_rows, num_hog_cols);
 			}
 
 			// Work out the pose of the head from the tracked model
-			cv::Vec6d pose_estimate = LandmarkDetector::GetPose(face_model, fx, fy, cx, cy);
+			cv::Vec6d pose_estimate = LandmarkDetector::GetPose(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy);
 
-			if (hog_output_file.is_open())
+			// Keeping track of FPS
+			fps_tracker.AddFrame();
+
+			// Displaying the tracking visualizations
+			visualizer.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy);
+			visualizer.SetObservationFaceAlign(sim_warped_img);
+			visualizer.SetObservationHOG(hog_descriptor, num_hog_rows, num_hog_cols);
+			visualizer.SetObservationLandmarks(face_model.detected_landmarks, face_model.detection_certainty, detection_success);
+			visualizer.SetObservationPose(pose_estimate, face_model.detection_certainty);
+			visualizer.SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(face_model), LandmarkDetector::Calculate3DEyeLandmarks(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy), face_model.detection_certainty);
+			visualizer.SetFps(fps_tracker.GetFPS());
+
+			// detect key presses
+			char character_press = visualizer.ShowObservation();
+
+			// quit processing the current sequence (useful when in Webcam mode)
+			if (character_press == 'q')
 			{
-				output_HOG_frame(&hog_output_file, detection_success, hog_descriptor, num_hog_rows, num_hog_cols);
+				break;
 			}
 
-			// Write the similarity normalised output
-			if (!output_similarity_align.empty())
-			{
-
-				char name[100];
-
-				// Filename is based on frame number
-				std::sprintf(name, "frame_det_%06d.bmp", frame_count + 1);
-
-				// Construct the output filename
-				boost::filesystem::path slash("/");
-
-				std::string preferredSlash = slash.make_preferred().string();
-
-				string out_file = output_similarity_align[f_n] + preferredSlash + string(name);
-				bool write_success = imwrite(out_file, sim_warped_img);
-
-				if (!write_success)
-				{
-					cout << "Could not output similarity aligned image image" << endl;
-					return 1;
-				}
-			}
-
-			// Visualising the tracker
-			if(visualize_track && !det_parameters.quiet_mode)
-			{
-				visualise_tracking(captured_image, face_model, det_parameters, gazeDirection0, gazeDirection1, frame_count, fx, fy, cx, cy);
-			}
-
-			// Output the landmarks, pose, gaze, parameters and AUs
-			outputAllFeatures(&output_file, output_2D_landmarks, output_3D_landmarks, output_model_params, output_pose, output_AUs, output_gaze,
-				face_model, frame_count, time_stamp, detection_success, gazeDirection0, gazeDirection1, gazeAngle,
-				pose_estimate, fx, fy, cx, cy, face_analyser);
-
-			// output the tracked video
-			if(!tracked_videos_output.empty())
-			{		
-				writerFace << captured_image;
-			}
-
-			if(video_input)
-			{
-				video_capture >> captured_image;
-			}
-			else
-			{
-				curr_img++;
-				if(curr_img < (int)input_image_files[f_n].size())
-				{
-					string curr_img_file = input_image_files[f_n][curr_img];
-					captured_image = cv::imread(curr_img_file, -1);
-				}
-				else
-				{
-					captured_image = cv::Mat();
-				}
-			}
+			// Setting up the recorder output
+			open_face_rec.SetObservationHOG(detection_success, hog_descriptor, num_hog_rows, num_hog_cols, 31); // The number of channels in HOG is fixed at the moment, as using FHOG
+			open_face_rec.SetObservationVisualization(visualizer.GetVisImage());
+			open_face_rec.SetObservationActionUnits(face_analyser.GetCurrentAUsReg(), face_analyser.GetCurrentAUsClass());
+			open_face_rec.SetObservationLandmarks(face_model.detected_landmarks, face_model.GetShape(sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy), 
+				face_model.params_global, face_model.params_local, face_model.detection_certainty, detection_success);
+			open_face_rec.SetObservationPose(pose_estimate);
+			open_face_rec.SetObservationGaze(gazeDirection0, gazeDirection1, gazeAngle, LandmarkDetector::CalculateAllEyeLandmarks(face_model), LandmarkDetector::Calculate3DEyeLandmarks(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy));
+			open_face_rec.SetObservationTimestamp(sequence_reader.time_stamp);
+			open_face_rec.SetObservationFaceAlign(sim_warped_img);
+			open_face_rec.WriteObservation();
 			
-			if (!det_parameters.quiet_mode)
+			// Reporting progress
+			if(sequence_reader.GetProgress() >= reported_completion / 10.0)
 			{
-				// detect key presses
-				char character_press = cv::waitKey(1);
-			
-				// restart the tracker
-				if(character_press == 'r')
+				cout << reported_completion * 10 << "% ";
+				if (reported_completion == 10)
 				{
-					face_model.Reset();
+					cout << endl;
 				}
-				// quit the application
-				else if(character_press=='q')
-				{
-					return(0);
-				}
+				reported_completion = reported_completion + 1;
 			}
-			
-			// Update the frame count
-			frame_count++;
 
-			if(total_frames != -1)
-			{
-				if((double)frame_count/(double)total_frames >= reported_completion / 10.0)
-				{
-					cout << reported_completion * 10 << "% ";
-					reported_completion = reported_completion + 1;
-				}
-			}
+			// Grabbing the next frame in the sequence
+			captured_image = sequence_reader.GetNextFrame();
 
 		}
 		
-		output_file.close();
+		open_face_rec.Close();
 
-		if (output_files.size() > 0 && output_AUs)
+		if (recording_params.outputAUs())
 		{
-			cout << "Postprocessing the Action Unit predictions" << endl;
-			face_analyser.PostprocessOutputFile(output_files[f_n]);
+			INFO_STREAM("Postprocessing the Action Unit predictions");
+			face_analyser.PostprocessOutputFile(open_face_rec.GetCSVFile());
 		}
+
 		// Reset the models for the next video
 		face_analyser.Reset();
 		face_model.Reset();
 
-		frame_count = 0;
-		curr_img = -1;
-
-		if (total_frames != -1)
-		{
-			cout << endl;
-		}
-
-		// break out of the loop if done with all the files (or using a webcam)
-		if((video_input && f_n == input_files.size() -1) || (!video_input && f_n == input_image_files.size() - 1))
-		{
-			done = true;
-		}
 	}
 
 	return 0;
-}
-
-void prepareOutputFile(std::ofstream* output_file, bool output_2D_landmarks, bool output_3D_landmarks,
-	bool output_model_params, bool output_pose, bool output_AUs, bool output_gaze,
-	int num_face_landmarks, int num_model_modes, int num_eye_landmarks, vector<string> au_names_class, vector<string> au_names_reg)
-{
-
-	*output_file << "frame, timestamp, confidence, success";
-
-	if (output_gaze)
-	{
-		*output_file << ", gaze_0_x, gaze_0_y, gaze_0_z, gaze_1_x, gaze_1_y, gaze_1_z, gaze_angle_x, gaze_angle_y";
-
-		for (int i = 0; i < num_eye_landmarks; ++i)
-		{
-			*output_file << ", eye_lmk_x_" << i;
-		}
-		for (int i = 0; i < num_eye_landmarks; ++i)
-		{
-			*output_file << ", eye_lmk_y_" << i;
-		}
-	}
-
-	if (output_pose)
-	{
-		*output_file << ", pose_Tx, pose_Ty, pose_Tz, pose_Rx, pose_Ry, pose_Rz";
-	}
-
-	if (output_2D_landmarks)
-	{
-		for (int i = 0; i < num_face_landmarks; ++i)
-		{
-			*output_file << ", x_" << i;
-		}
-		for (int i = 0; i < num_face_landmarks; ++i)
-		{
-			*output_file << ", y_" << i;
-		}
-	}
-
-	if (output_3D_landmarks)
-	{
-		for (int i = 0; i < num_face_landmarks; ++i)
-		{
-			*output_file << ", X_" << i;
-		}
-		for (int i = 0; i < num_face_landmarks; ++i)
-		{
-			*output_file << ", Y_" << i;
-		}
-		for (int i = 0; i < num_face_landmarks; ++i)
-		{
-			*output_file << ", Z_" << i;
-		}
-	}
-
-	// Outputting model parameters (rigid and non-rigid), the first parameters are the 6 rigid shape parameters, they are followed by the non rigid shape parameters
-	if (output_model_params)
-	{
-		*output_file << ", p_scale, p_rx, p_ry, p_rz, p_tx, p_ty";
-		for (int i = 0; i < num_model_modes; ++i)
-		{
-			*output_file << ", p_" << i;
-		}
-	}
-
-	if (output_AUs)
-	{
-		std::sort(au_names_reg.begin(), au_names_reg.end());
-		for (string reg_name : au_names_reg)
-		{
-			*output_file << ", " << reg_name << "_r";
-		}
-
-		std::sort(au_names_class.begin(), au_names_class.end());
-		for (string class_name : au_names_class)
-		{
-			*output_file << ", " << class_name << "_c";
-		}
-	}
-
-	*output_file << endl;
-
-}
-
-// Output all of the information into one file in one go (quite a few parameters, but simplifies the flow)
-void outputAllFeatures(std::ofstream* output_file, bool output_2D_landmarks, bool output_3D_landmarks,
-	bool output_model_params, bool output_pose, bool output_AUs, bool output_gaze,
-	const LandmarkDetector::CLNF& face_model, int frame_count, double time_stamp, bool detection_success,
-	cv::Point3f gazeDirection0, cv::Point3f gazeDirection1, cv::Vec2d gaze_angle, cv::Vec6d& pose_estimate, double fx, double fy, double cx, double cy,
-	const FaceAnalysis::FaceAnalyser& face_analyser)
-{
-
-	double confidence = 0.5 * (1 - face_model.detection_certainty);
-
-	*output_file << frame_count + 1 << ", " << time_stamp << ", " << confidence << ", " << detection_success;
-
-	// Output the estimated gaze
-	if (output_gaze)
-	{
-		*output_file << ", " << gazeDirection0.x << ", " << gazeDirection0.y << ", " << gazeDirection0.z
-			<< ", " << gazeDirection1.x << ", " << gazeDirection1.y << ", " << gazeDirection1.z;
-
-		// Output gaze angle (same format as head pose angle)
-		*output_file << ", " << gaze_angle[0] << ", " << gaze_angle[1];
-
-		// Output eye landmarks
-		std::vector<cv::Point2d> eye_landmark_points = LandmarkDetector::CalculateAllEyeLandmarks(face_model);
-
-		for (size_t i = 0; i < eye_landmark_points.size(); ++i)
-		{
-			*output_file << ", " << eye_landmark_points[i].x;
-		}
-		for (size_t i = 0; i < eye_landmark_points.size(); ++i)
-		{
-			*output_file << ", " << eye_landmark_points[i].y;
-		}
-	}
-
-	// Output the estimated head pose
-	if (output_pose)
-	{
-		if(face_model.tracking_initialised)
-		{
-			*output_file << ", " << pose_estimate[0] << ", " << pose_estimate[1] << ", " << pose_estimate[2]
-				<< ", " << pose_estimate[3] << ", " << pose_estimate[4] << ", " << pose_estimate[5];
-		}
-		else
-		{
-			*output_file << ", 0, 0, 0, 0, 0, 0";
-		}
-	}
-
-	// Output the detected 2D facial landmarks
-	if (output_2D_landmarks)
-	{
-		for (int i = 0; i < face_model.pdm.NumberOfPoints() * 2; ++i)
-		{
-			if(face_model.tracking_initialised)
-			{
-				*output_file << ", " << face_model.detected_landmarks.at<double>(i);
-			}
-			else
-			{
-				*output_file << ", 0";
-			}
-		}
-	}
-
-	// Output the detected 3D facial landmarks
-	if (output_3D_landmarks)
-	{
-		cv::Mat_<double> shape_3D = face_model.GetShape(fx, fy, cx, cy);
-		for (int i = 0; i < face_model.pdm.NumberOfPoints() * 3; ++i)
-		{
-			if (face_model.tracking_initialised)
-			{
-				*output_file << ", " << shape_3D.at<double>(i);
-			}
-			else
-			{
-				*output_file << ", 0";
-			}
-		}
-	}
-
-	if (output_model_params)
-	{
-		for (int i = 0; i < 6; ++i)
-		{
-			if (face_model.tracking_initialised)
-			{
-				*output_file << ", " << face_model.params_global[i];
-			}
-			else
-			{
-				*output_file << ", 0";
-			}
-		}
-		for (int i = 0; i < face_model.pdm.NumberOfModes(); ++i)
-		{
-			if(face_model.tracking_initialised)
-			{
-				*output_file << ", " << face_model.params_local.at<double>(i, 0);
-			}
-			else
-			{
-				*output_file << ", 0";
-			}
-		}
-	}
-
-
-
-	if (output_AUs)
-	{
-		auto aus_reg = face_analyser.GetCurrentAUsReg();
-
-		vector<string> au_reg_names = face_analyser.GetAURegNames();
-		std::sort(au_reg_names.begin(), au_reg_names.end());
-
-		// write out ar the correct index
-		for (string au_name : au_reg_names)
-		{
-			for (auto au_reg : aus_reg)
-			{
-				if (au_name.compare(au_reg.first) == 0)
-				{
-					*output_file << ", " << au_reg.second;
-					break;
-				}
-			}
-		}
-
-		if (aus_reg.size() == 0)
-		{
-			for (size_t p = 0; p < face_analyser.GetAURegNames().size(); ++p)
-			{
-				*output_file << ", 0";
-			}
-		}
-
-		auto aus_class = face_analyser.GetCurrentAUsClass();
-
-		vector<string> au_class_names = face_analyser.GetAUClassNames();
-		std::sort(au_class_names.begin(), au_class_names.end());
-
-		// write out ar the correct index
-		for (string au_name : au_class_names)
-		{
-			for (auto au_class : aus_class)
-			{
-				if (au_name.compare(au_class.first) == 0)
-				{
-					*output_file << ", " << au_class.second;
-					break;
-				}
-			}
-		}
-
-		if (aus_class.size() == 0)
-		{
-			for (size_t p = 0; p < face_analyser.GetAUClassNames().size(); ++p)
-			{
-				*output_file << ", 0";
-			}
-		}
-	}
-	*output_file << endl;
-}
-
-
-void get_output_feature_params(vector<string> &output_similarity_aligned, vector<string> &output_hog_aligned_files, bool& visualize_track, 
-	bool& visualize_align, bool& visualize_hog, bool &output_2D_landmarks, bool &output_3D_landmarks, bool &output_model_params, 
-	bool &output_pose, bool &output_AUs, bool &output_gaze, vector<string> &arguments)
-{
-	output_similarity_aligned.clear();
-	output_hog_aligned_files.clear();
-
-	bool* valid = new bool[arguments.size()];
-
-	for (size_t i = 0; i < arguments.size(); ++i)
-	{
-		valid[i] = true;
-	}
-
-	string output_root = "";
-
-	visualize_align = false;
-	visualize_hog = false;
-	visualize_track = false;
-
-	string separator = string(1, boost::filesystem::path::preferred_separator);
-
-	// First check if there is a root argument (so that videos and outputs could be defined more easilly)
-	for (size_t i = 0; i < arguments.size(); ++i)
-	{
-		if (arguments[i].compare("-root") == 0)
-		{
-			output_root = arguments[i + 1] + separator;
-			i++;
-		}
-		if (arguments[i].compare("-outroot") == 0)
-		{
-			output_root = arguments[i + 1] + separator;
-			i++;
-		}
-	}
-
-	for (size_t i = 0; i < arguments.size(); ++i)
-	{
-		if (arguments[i].compare("-simalign") == 0)
-		{
-			output_similarity_aligned.push_back(output_root + arguments[i + 1]);
-			create_directory(output_root + arguments[i + 1]);
-			valid[i] = false;
-			valid[i + 1] = false;
-			i++;
-		}
-		else if (arguments[i].compare("-hogalign") == 0)
-		{
-			output_hog_aligned_files.push_back(output_root + arguments[i + 1]);
-			create_directory_from_file(output_root + arguments[i + 1]);
-			valid[i] = false;
-			valid[i + 1] = false;
-			i++;
-		}
-		else if (arguments[i].compare("-verbose") == 0)
-		{
-			visualize_track = true;
-			visualize_align = true;
-			visualize_hog = true;
-		}
-		else if (arguments[i].compare("-vis-align") == 0)
-		{
-			visualize_align = true;
-			valid[i] = false;
-		}
-		else if (arguments[i].compare("-vis-hog") == 0)
-		{
-			visualize_hog = true;
-			valid[i] = false;
-		}
-		else if (arguments[i].compare("-vis-track") == 0)
-		{
-			visualize_track = true;
-			valid[i] = false;
-		}
-		else if (arguments[i].compare("-no2Dfp") == 0)
-		{
-			output_2D_landmarks = false;
-			valid[i] = false;
-		}
-		else if (arguments[i].compare("-no3Dfp") == 0)
-		{
-			output_3D_landmarks = false;
-			valid[i] = false;
-		}
-		else if (arguments[i].compare("-noMparams") == 0)
-		{
-			output_model_params = false;
-			valid[i] = false;
-		}
-		else if (arguments[i].compare("-noPose") == 0)
-		{
-			output_pose = false;
-			valid[i] = false;
-		}
-		else if (arguments[i].compare("-noAUs") == 0)
-		{
-			output_AUs = false;
-			valid[i] = false;
-		}
-		else if (arguments[i].compare("-noGaze") == 0)
-		{
-			output_gaze = false;
-			valid[i] = false;
-		}
-	}
-
-	for (int i = arguments.size() - 1; i >= 0; --i)
-	{
-		if (!valid[i])
-		{
-			arguments.erase(arguments.begin() + i);
-		}
-	}
-
-}
-
-
-// Can process images via directories creating a separate output file per directory
-void get_image_input_output_params_feats(vector<vector<string> > &input_image_files, bool& as_video, vector<string> &arguments)
-{
-	bool* valid = new bool[arguments.size()];
-
-	for (size_t i = 0; i < arguments.size(); ++i)
-	{
-		valid[i] = true;
-		if (arguments[i].compare("-fdir") == 0)
-		{
-
-			// parse the -fdir directory by reading in all of the .png and .jpg files in it
-			path image_directory(arguments[i + 1]);
-
-			try
-			{
-				// does the file exist and is it a directory
-				if (exists(image_directory) && is_directory(image_directory))
-				{
-
-					vector<path> file_in_directory;
-					copy(directory_iterator(image_directory), directory_iterator(), back_inserter(file_in_directory));
-
-					// Sort the images in the directory first
-					sort(file_in_directory.begin(), file_in_directory.end());
-
-					vector<string> curr_dir_files;
-
-					for (vector<path>::const_iterator file_iterator(file_in_directory.begin()); file_iterator != file_in_directory.end(); ++file_iterator)
-					{
-						// Possible image extension .jpg and .png
-						if (file_iterator->extension().string().compare(".jpg") == 0 || file_iterator->extension().string().compare(".png") == 0)
-						{
-							curr_dir_files.push_back(file_iterator->string());
-						}
-					}
-
-					input_image_files.push_back(curr_dir_files);
-				}
-			}
-			catch (const filesystem_error& ex)
-			{
-				cout << ex.what() << '\n';
-			}
-
-			valid[i] = false;
-			valid[i + 1] = false;
-			i++;
-		}
-		else if (arguments[i].compare("-asvid") == 0)
-		{
-			as_video = true;
-		}
-	}
-
-	// Clear up the argument list
-	for (int i = arguments.size() - 1; i >= 0; --i)
-	{
-		if (!valid[i])
-		{
-			arguments.erase(arguments.begin() + i);
-		}
-	}
-
-}
-
-void output_HOG_frame(std::ofstream* hog_file, bool good_frame, const cv::Mat_<double>& hog_descriptor, int num_rows, int num_cols)
-{
-
-	// Using FHOGs, hence 31 channels
-	int num_channels = 31;
-
-	hog_file->write((char*)(&num_cols), 4);
-	hog_file->write((char*)(&num_rows), 4);
-	hog_file->write((char*)(&num_channels), 4);
-
-	// Not the best way to store a bool, but will be much easier to read it
-	float good_frame_float;
-	if (good_frame)
-		good_frame_float = 1;
-	else
-		good_frame_float = -1;
-
-	hog_file->write((char*)(&good_frame_float), 4);
-
-	cv::MatConstIterator_<double> descriptor_it = hog_descriptor.begin();
-
-	for (int y = 0; y < num_cols; ++y)
-	{
-		for (int x = 0; x < num_rows; ++x)
-		{
-			for (unsigned int o = 0; o < 31; ++o)
-			{
-
-				float hog_data = (float)(*descriptor_it++);
-				hog_file->write((char*)&hog_data, 4);
-			}
-		}
-	}
 }

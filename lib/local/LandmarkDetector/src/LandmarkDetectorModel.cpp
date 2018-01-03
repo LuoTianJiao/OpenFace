@@ -45,6 +45,7 @@
 
 // Local includes
 #include <LandmarkDetectorUtils.h>
+#include <RotationHelpers.h>
 
 using namespace LandmarkDetector;
 
@@ -507,10 +508,10 @@ void CLNF::Read(string main_location)
 	detected_landmarks.create(2 * pdm.NumberOfPoints(), 1);
 	detected_landmarks.setTo(0);
 
-	detection_success = false;
-	tracking_initialised = false;
+	SetDetectionSuccess(false);
+	SetInitialized(false);
 	model_likelihood = -10; // very low
-	detection_certainty = 1; // very uncertain
+	detection_certainty = 0; // very uncertain
 
 	// Initialising default values for the rest of the variables
 
@@ -519,9 +520,31 @@ void CLNF::Read(string main_location)
 	params_local.setTo(0.0);
 
 	// global parameters (pose) [scale, euler_x, euler_y, euler_z, tx, ty]
-	params_global = cv::Vec6d(1, 0, 0, 0, 0, 0);
+	params_global = cv::Vec6d(0, 0, 0, 0, 0, 0);
 
 	failures_in_a_row = -1;
+
+}
+
+void CLNF::SetDetectionSuccess(bool success)
+{
+	this->detection_success = success;
+
+	for (size_t i = 0; i < hierarchical_models.size(); ++i) 
+	{
+		hierarchical_models[i].SetDetectionSuccess(success);
+	}
+
+}
+
+void CLNF::SetInitialized(bool initialized)
+{
+	this->tracking_initialised = initialized;
+
+	for (size_t i = 0; i < hierarchical_models.size(); ++i)
+	{
+		hierarchical_models[i].SetInitialized(initialized);
+	}
 
 }
 
@@ -530,10 +553,10 @@ void CLNF::Reset()
 {
 	detected_landmarks.setTo(0);
 
-	detection_success = false;
-	tracking_initialised = false;
+	SetDetectionSuccess(false);
+	SetInitialized(false);
 	model_likelihood = -10;  // very low
-	detection_certainty = 1; // very uncertain
+	detection_certainty = 0; // very uncertain
 
 	// local parameters (shape)
 	params_local.setTo(0.0);
@@ -575,43 +598,37 @@ bool CLNF::DetectLandmarks(const cv::Mat_<uchar> &image, FaceModelParameters& pa
 		// Do the hierarchical models in parallel
 		tbb::parallel_for(0, (int)hierarchical_models.size(), [&](int part_model){
 		{
-			// Only do the synthetic eye models if we're doing gaze
-			if (!((hierarchical_model_names[part_model].compare("right_eye_28") == 0 ||
-			hierarchical_model_names[part_model].compare("left_eye_28") == 0)
-			&& !params.track_gaze))
+
+			int n_part_points = hierarchical_models[part_model].pdm.NumberOfPoints();
+
+			vector<pair<int, int>> mappings = this->hierarchical_mapping[part_model];
+
+			cv::Mat_<double> part_model_locs(n_part_points * 2, 1, 0.0);
+
+			// Extract the corresponding landmarks
+			for (size_t mapping_ind = 0; mapping_ind < mappings.size(); ++mapping_ind)
 			{
+				part_model_locs.at<double>(mappings[mapping_ind].second) = detected_landmarks.at<double>(mappings[mapping_ind].first);
+				part_model_locs.at<double>(mappings[mapping_ind].second + n_part_points) = detected_landmarks.at<double>(mappings[mapping_ind].first + this->pdm.NumberOfPoints());
+			}
 
-				int n_part_points = hierarchical_models[part_model].pdm.NumberOfPoints();
+			// Fit the part based model PDM
+			hierarchical_models[part_model].pdm.CalcParams(hierarchical_models[part_model].params_global, hierarchical_models[part_model].params_local, part_model_locs);
 
-				vector<pair<int, int>> mappings = this->hierarchical_mapping[part_model];
+			// Only do this if we don't need to upsample
+			if (params_global[0] > 0.9 * hierarchical_models[part_model].patch_experts.patch_scaling[0])
+			{
+				parts_used = true;
 
-				cv::Mat_<double> part_model_locs(n_part_points * 2, 1, 0.0);
+				this->hierarchical_params[part_model].window_sizes_current = this->hierarchical_params[part_model].window_sizes_init;
 
-				// Extract the corresponding landmarks
-				for (size_t mapping_ind = 0; mapping_ind < mappings.size(); ++mapping_ind)
-				{
-					part_model_locs.at<double>(mappings[mapping_ind].second) = detected_landmarks.at<double>(mappings[mapping_ind].first);
-					part_model_locs.at<double>(mappings[mapping_ind].second + n_part_points) = detected_landmarks.at<double>(mappings[mapping_ind].first + this->pdm.NumberOfPoints());
-				}
+				// Do the actual landmark detection
+				hierarchical_models[part_model].DetectLandmarks(image, hierarchical_params[part_model]);
 
-				// Fit the part based model PDM
-				hierarchical_models[part_model].pdm.CalcParams(hierarchical_models[part_model].params_global, hierarchical_models[part_model].params_local, part_model_locs);
-
-				// Only do this if we don't need to upsample
-				if (params_global[0] > 0.9 * hierarchical_models[part_model].patch_experts.patch_scaling[0])
-				{
-					parts_used = true;
-
-					this->hierarchical_params[part_model].window_sizes_current = this->hierarchical_params[part_model].window_sizes_init;
-
-					// Do the actual landmark detection
-					hierarchical_models[part_model].DetectLandmarks(image, hierarchical_params[part_model]);
-
-				}
-				else
-				{
-					hierarchical_models[part_model].pdm.CalcShape2D(hierarchical_models[part_model].detected_landmarks, hierarchical_models[part_model].params_local, hierarchical_models[part_model].params_global);
-				}
+			}
+			else
+			{
+				hierarchical_models[part_model].pdm.CalcShape2D(hierarchical_models[part_model].detected_landmarks, hierarchical_models[part_model].params_local, hierarchical_models[part_model].params_global);
 			}
 		}
 		});
@@ -624,16 +641,11 @@ bool CLNF::DetectLandmarks(const cv::Mat_<uchar> &image, FaceModelParameters& pa
 			{
 				vector<pair<int, int>> mappings = this->hierarchical_mapping[part_model];
 
-				if (!((hierarchical_model_names[part_model].compare("right_eye_28") == 0 ||
-					hierarchical_model_names[part_model].compare("left_eye_28") == 0)
-					&& !params.track_gaze))
+				// Reincorporate the models into main tracker
+				for (size_t mapping_ind = 0; mapping_ind < mappings.size(); ++mapping_ind)
 				{
-					// Reincorporate the models into main tracker
-					for (size_t mapping_ind = 0; mapping_ind < mappings.size(); ++mapping_ind)
-					{
-						detected_landmarks.at<double>(mappings[mapping_ind].first) = hierarchical_models[part_model].detected_landmarks.at<double>(mappings[mapping_ind].second);
-						detected_landmarks.at<double>(mappings[mapping_ind].first + pdm.NumberOfPoints()) = hierarchical_models[part_model].detected_landmarks.at<double>(mappings[mapping_ind].second + hierarchical_models[part_model].pdm.NumberOfPoints());
-					}
+					detected_landmarks.at<double>(mappings[mapping_ind].first) = hierarchical_models[part_model].detected_landmarks.at<double>(mappings[mapping_ind].second);
+					detected_landmarks.at<double>(mappings[mapping_ind].first + pdm.NumberOfPoints()) = hierarchical_models[part_model].detected_landmarks.at<double>(mappings[mapping_ind].second + hierarchical_models[part_model].pdm.NumberOfPoints());
 				}
 			}
 
@@ -650,18 +662,18 @@ bool CLNF::DetectLandmarks(const cv::Mat_<uchar> &image, FaceModelParameters& pa
 
 		detection_certainty = landmark_validator.Check(orientation, image, detected_landmarks);
 
-		detection_success = detection_certainty < params.validation_boundary;
+		detection_success = detection_certainty > params.validation_boundary;
 	}
 	else
 	{
 		detection_success = fit_success;
 		if(fit_success)
 		{
-			detection_certainty = -1;
+			detection_certainty = 1;
 		}
 		else
 		{
-			detection_certainty = 1;
+			detection_certainty = 0;
 		}
 
 	}
@@ -1091,36 +1103,42 @@ cv::Mat_<double> CLNF::GetShape(double fx, double fy, double cx, double cy) cons
 {
 	int n = this->detected_landmarks.rows/2;
 
-	cv::Mat_<double> shape3d(n*3, 1);
+	cv::Mat_<double> outShape(n, 3, 0.0);
 
-	this->pdm.CalcShape3D(shape3d, this->params_local);
-	
-	// Need to rotate the shape to get the actual 3D representation
-	
-	// get the rotation matrix from the euler angles
-	cv::Matx33d R = LandmarkDetector::Euler2RotationMatrix(cv::Vec3d(params_global[1], params_global[2], params_global[3]));
-
-	shape3d = shape3d.reshape(1, 3);
-
-	shape3d = shape3d.t() * cv::Mat(R).t();
-	
-	// from the weak perspective model can determine the average depth of the object
-	double Zavg = fx / params_global[0];	
-
-	cv::Mat_<double> outShape(n,3,0.0);
-
-	// this is described in the paper in section 3.4 (equation 10) (of the CLM-Z paper)
-	for(int i = 0; i < n; i++)
+	// If the tracking started (otherwise no point reporting 3D shape)
+	if(this->IsInitialized())
 	{
-		double Z = Zavg + shape3d.at<double>(i,2);
 
-		double X = Z * ((this->detected_landmarks.at<double>(i) - cx)/fx);
-		double Y = Z * ((this->detected_landmarks.at<double>(i + n) - cy)/fy);
+		cv::Mat_<double> shape3d(n * 3, 1);
 
-		outShape.at<double>(i,0) = (double)X;
-		outShape.at<double>(i,1) = (double)Y;
-		outShape.at<double>(i,2) = (double)Z;
+		this->pdm.CalcShape3D(shape3d, this->params_local);
+	
+		// Need to rotate the shape to get the actual 3D representation
+	
+		// get the rotation matrix from the euler angles
+		cv::Matx33d R = Utilities::Euler2RotationMatrix(cv::Vec3d(params_global[1], params_global[2], params_global[3]));
 
+		shape3d = shape3d.reshape(1, 3);
+
+		shape3d = shape3d.t() * cv::Mat(R).t();
+	
+		// from the weak perspective model can determine the average depth of the object
+		double Zavg = fx / params_global[0];	
+
+
+		// this is described in the paper in section 3.4 (equation 10) (of the CLM-Z paper)
+		for(int i = 0; i < n; i++)
+		{
+			double Z = Zavg + shape3d.at<double>(i,2);
+
+			double X = Z * ((this->detected_landmarks.at<double>(i) - cx)/fx);
+			double Y = Z * ((this->detected_landmarks.at<double>(i + n) - cy)/fy);
+
+			outShape.at<double>(i,0) = (double)X;
+			outShape.at<double>(i,1) = (double)Y;
+			outShape.at<double>(i,2) = (double)Z;
+
+		}
 	}
 
 	// The format is 3 rows - n cols

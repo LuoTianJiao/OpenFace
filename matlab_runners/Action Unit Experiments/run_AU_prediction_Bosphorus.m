@@ -7,12 +7,12 @@ addpath('./helpers');
 find_Bosphorus;
 out_loc = './out_bosph/';
 
-if(~exist(out_loc, 'dir'))
-    mkdir(out_loc);
-end
-
 %%
-executable = '"../../x64/Release/FaceLandmarkImg.exe"';
+if(isunix)
+    executable = '"../../build/bin/FaceLandmarkImg"';
+else
+    executable = '"../../x64/Release/FaceLandmarkImg.exe"';
+end
 
 bosph_dirs = dir([Bosphorus_dir, '/BosphorusDB/BosphorusDB/bs*']);
 
@@ -22,11 +22,14 @@ parfor f1=1:numel(bosph_dirs)
     command = executable;
 
     input_dir = [Bosphorus_dir, '/BosphorusDB/BosphorusDB/', bosph_dirs(f1).name];
-    command = cat(2, command, [' -fdir "' input_dir '" -ofdir "' out_loc '"']);
-    command = cat(2, command, ' -multi_view 1 -wild -q');
+    command = cat(2, command, [' -fdir "' input_dir '" -out_dir "' out_loc '"']);
+    command = cat(2, command, ' -multi_view 1 -wild -aus ');
 
-    dos(command);
-
+    if(isunix)
+        unix(command, '-echo')
+    else
+        dos(command);
+    end
 end
 
 %%
@@ -37,64 +40,32 @@ aus_Bosph = [1, 2, 4, 5, 6, 7, 9, 10, 12, 14, 15, 17, 20, 23, 25, 26, 45];
 
 %% Read the predicted values
 
-% First read the first file to get the ids and line numbers
-% au occurences
-fid = fopen([out_loc, filenames{1}, '_det_0.pts']);
-data = fgetl(fid);
-
-ind = 0;
-beg_ind = -1;
-end_ind = -1;
-aus_det = [];
-aus_det_id = [];
-
-%%
-while ischar(data)
-    if(~isempty(findstr(data, 'au occurences:')))
-        num_occurences = str2num(data(numel('au occurences:')+1:end));
-        % Skip ahead two lines
-        data = fgetl(fid);   
-        data = fgetl(fid);   
-        ind = ind + 2;
-        beg_ind = ind;
-    end
-    
-    if(beg_ind ~= -1 && end_ind == -1)
-        if(~isempty(findstr(data, '}')))
-            end_ind = ind;
-        else
-            d = strsplit(data, ' '); 
-            aus_det = cat(1, aus_det, str2num(d{1}(3:end)));
-            aus_det_id = cat(1, aus_det_id, ind - beg_ind + 1);
-        end
-    end
-    
-    data = fgetl(fid);
-    ind = ind + 1;
+% First read the first file to get the column ids
+tab = readtable([out_loc, filenames{1}, '.csv']);
+column_names = tab.Properties.VariableNames;
+aus_det_id = cellfun(@(x) ~isempty(x) && x==5, strfind(column_names, '_c'));
+aus_det_cell = column_names(aus_det_id);
+aus_det = zeros(size(aus_det_cell));
+for i=1:numel(aus_det)
+    aus_det(i) = str2num(aus_det_cell{i}(3:4));
 end
-fclose(fid);
 
 %%
 labels_pred = zeros(size(labels_gt));
 for i=1:numel(filenames)
 
     % Will need to read the relevant AUs only
-    if(exist([out_loc, filenames{i}, '_det_0.pts'], 'file'))
-        fid = fopen([out_loc, filenames{i}, '_det_0.pts']);
-        for k=1:beg_ind
-            data = fgetl(fid);
+    all_params  = dlmread([out_loc, filenames{i}, '.csv'], ',', 1, 0);
+    
+    % if multiple faces detected just take the first row
+    aus_pred = all_params(1, aus_det_id);
+    
+    for k=1:numel(aus_det)
+        if(sum(aus_Bosph == aus_det(k))>0)
+            labels_pred(i, aus_Bosph == aus_det(k)) = aus_pred(k);
         end
-
-        for k=1:num_occurences
-            data = fgetl(fid);
-            if(sum(aus_Bosph == aus_det(k))>0)
-                d = strsplit(data, ' '); 
-                labels_pred(i, aus_Bosph == aus_det(k)) = str2num(d{2});
-            end
-        end
-
-        fclose(fid);
     end
+
 end
 
 %%
@@ -122,63 +93,32 @@ fclose(f);
 
 %% Read the predicted values for intensities
 
-% First read the first file to get the ids and line numbers
-% au occurences
-fid = fopen([out_loc, filenames{1}, '_det_0.pts']);
-data = fgetl(fid);
-
-ind = 0;
-beg_ind = -1;
-end_ind = -1;
-aus_det = [];
-aus_det_id = [];
-
-while ischar(data)
-    if(~isempty(findstr(data, 'au intensities:')))
-        num_occurences = str2num(data(numel('au intensities:')+1:end));
-        % Skip ahead two lines
-        data = fgetl(fid);   
-        data = fgetl(fid);   
-        ind = ind + 2;
-        beg_ind = ind;
-    end
-    
-    if(beg_ind ~= -1 && end_ind == -1)
-        if(~isempty(findstr(data, '}')))
-            end_ind = ind;
-        else
-            d = strsplit(data, ' '); 
-            aus_det = cat(1, aus_det, str2num(d{1}(3:end)));
-            aus_det_id = cat(1, aus_det_id, ind - beg_ind + 1);
-        end
-    end
-    
-    data = fgetl(fid);
-    ind = ind + 1;
+% First read the first file to get the column ids
+tab = readtable([out_loc, filenames{1}, '.csv']);
+column_names = tab.Properties.VariableNames;
+aus_det_id = cellfun(@(x) ~isempty(x) && x==5, strfind(column_names, '_r'));
+aus_det_cell = column_names(aus_det_id);
+aus_det = zeros(size(aus_det_cell));
+for i=1:numel(aus_det)
+    aus_det(i) = str2num(aus_det_cell{i}(3:4));
 end
-fclose(fid);
 
 %%
 labels_pred = zeros(size(labels_gt));
 for i=1:numel(filenames)
 
     % Will need to read the relevant AUs only
-    if(exist([out_loc, filenames{i}, '_det_0.pts'], 'file'))
-        fid = fopen([out_loc, filenames{i}, '_det_0.pts']);
-        for k=1:beg_ind
-            data = fgetl(fid);
+    all_params  = dlmread([out_loc, filenames{i}, '.csv'], ',', 1, 0);
+    
+    % if multiple faces detected just take the first row
+    aus_pred = all_params(1, aus_det_id);
+    
+    for k=1:numel(aus_det)
+        if(sum(aus_Bosph == aus_det(k))>0)
+            labels_pred(i, aus_Bosph == aus_det(k)) = aus_pred(k);
         end
-
-        for k=1:num_occurences
-            data = fgetl(fid);
-            if(sum(aus_Bosph == aus_det(k))>0)
-                d = strsplit(data, ' '); 
-                labels_pred(i, aus_Bosph == aus_det(k)) = str2num(d{2});
-            end
-        end
-
-        fclose(fid);
     end
+
 end
 
 %%

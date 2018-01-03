@@ -51,3 +51,12 @@ matlab_runners/Head Pose Experiments/experiments/ict_out/
 OpenFace\.VC\.db
 matlab_version/face_validation/vlfeat-0.9.20/
 matlab_version/face_validation/trained/intermediate/
+lib/local/GazeAnalyser/x64/
+lib/local/Utilities/x64/
+exe/FeatureExtraction/processed/
+exe/FaceLandmarkImg/processed/
+exe/FeatureExtraction/processed_features/
+matlab_runners/Demos/processed_features/
+*.db
+exe/releases/OpenFace_0.3.0_win_x64/
+exe/releases/OpenFace_0.3.0_win_x86/

@@ -13,7 +13,7 @@ find_package( BLAS REQUIRED )
 include_directories( ${BLAS_INCLUDE_DIRS} )
 LINK_DIRECTORIES(${BLAS_LIBRARY_DIRS})	
 
-find_package( OpenCV REQUIRED )
+find_package( OpenCV 3.1 REQUIRED )
 
 MESSAGE("OpenCV information:") 
 MESSAGE("  OpenCV_INCLUDE_DIRS: ${OpenCV_INCLUDE_DIRS}") 
@@ -191,6 +191,8 @@ add_subdirectory(lib/local/LandmarkDetector)
 add_subdirectory(lib/local/FaceAnalyser)
 # Gaze library
 add_subdirectory(lib/local/GazeAnalyser)
+# Utilities library
+add_subdirectory(lib/local/Utilities)
 # executables
 add_subdirectory(exe/FaceLandmarkImg)
 add_subdirectory(exe/FaceLandmarkVid)

@@ -4,7 +4,7 @@ function [meanError, all_rot_preds, all_rot_gts, meanErrors, all_errors, rels_al
 
     polhemus = 'polhemusNorm.csv';
 
-    sequences = dir([resDir '*.txt']);
+    sequences = dir([resDir '*.csv']);
 
     rotMeanErr = zeros(numel(sequences),3);
     rotRMS = zeros(numel(sequences),3);

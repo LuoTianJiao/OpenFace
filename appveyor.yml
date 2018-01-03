@@ -6,7 +6,6 @@ branches:
   - /^feature-.*$/
 max_jobs: 4  
 configuration:
-- Debug
 - Release
 platform:
 - x64
@@ -21,9 +20,9 @@ test_script:
   - cmd: if exist Debug (cd Debug)
   - cmd: if exist Release (cd Release)
   - cmd: dir
-  - cmd: if exist "../samples" (FaceLandmarkImg.exe -fdir "../samples/" -ofdir "./demo_img/" -oidir "./demo_img/" -wild -q) else (FaceLandmarkImg.exe -fdir "../../samples/" -ofdir "./demo_img/" -oidir "./demo_img/" -wild -q)
-  - cmd: if exist "../samples" (FaceLandmarkImg.exe -inroot ../samples -f sample1.jpg -outroot out_data -of sample1.pts -op sample1.3d -oi sample1.bmp -q) else (FaceLandmarkImg.exe -inroot ../../samples -f sample1.jpg -outroot out_data -of sample1.pts -op sample1.3d -oi sample1.bmp -q)
-  - cmd: if exist "../samples" (FaceLandmarkVidMulti.exe -inroot ../samples -f multi_face.avi -ov multi_face.avi -q) else (FaceLandmarkVidMulti.exe -inroot ../../samples -f multi_face.avi -ov multi_face.avi -q)
-  - cmd: if exist "../samples" (FeatureExtraction.exe -f "../samples/default.wmv" -outroot output_features -of "default.txt" -simalign aligned -ov feat_track.avi -hogalign hog_test.dat -q) else (FeatureExtraction.exe -f "../../samples/default.wmv" -outroot output_features -of "default.txt" -simalign aligned -ov feat_track.avi -hogalign hog_test.dat -q)
-  - cmd: if exist "../samples" (FeatureExtraction.exe -f "../samples/default.wmv" -outroot output_features -of "default.txt" -simalign aligned -simsize 200 -simscale 0.5 -ov feat_track.avi -hogalign hog_test.dat -q) else (FeatureExtraction.exe -f "../../samples/default.wmv" -outroot output_features -of "default.txt" -simalign aligned -simsize 200 -simscale 0.5 -ov feat_track.avi -hogalign hog_test.dat -q)
-  - cmd: if exist "../samples" (FaceLandmarkVid.exe -f "../samples/default.wmv" -ov track.avi -q) else (FaceLandmarkVid.exe -f "../../samples/default.wmv" -ov track.avi -q)
+  - cmd: if exist "../samples" (FaceLandmarkImg.exe -fdir "../samples/" -out_dir "./demo_img/" -wild -q) else (FaceLandmarkImg.exe -fdir "../../samples/" -out_dir "./demo_img/" -wild -q)
+  - cmd: if exist "../samples" (FaceLandmarkImg.exe -inroot ../samples -f sample1.jpg -out_dir out_data -of sample1.pts -q) else (FaceLandmarkImg.exe -inroot ../../samples -f sample1.jpg -out_dir out_data -q)
+  - cmd: if exist "../samples" (FaceLandmarkVidMulti.exe -inroot ../samples -f multi_face.avi -q) else (FaceLandmarkVidMulti.exe -inroot ../../samples -f multi_face.avi -q)
+  - cmd: if exist "../samples" (FeatureExtraction.exe -f "../samples/default.wmv" -q) else (FeatureExtraction.exe -f "../../samples/default.wmv" -q)
+  - cmd: if exist "../samples" (FeatureExtraction.exe -f "../samples/default.wmv" -simsize 200 -simscale 0.5 -q) else (FeatureExtraction.exe -f "../../samples/default.wmv" -simsize 200 -simscale 0.5 -ov feat_track.avi -q)
+  - cmd: if exist "../samples" (FaceLandmarkVid.exe -f "../samples/default.wmv"  -q) else (FaceLandmarkVid.exe -f "../../samples/default.wmv" -q)

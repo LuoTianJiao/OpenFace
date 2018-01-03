@@ -29,22 +29,21 @@ else
     executable = '"../../x64/Release/FaceLandmarkImg.exe"';
 end
 
-command = sprintf('%s -fx 1028 -fy 1028 -gaze ', executable);
+command = sprintf('%s -fx 1028 -fy 1028  ', executable);
 p_dirs = dir([database_root, 'p*']);
 
 parfor p=1:numel(p_dirs)
     tic
 
-    input_loc = ['-fdir "', [database_root, p_dirs(p).name], '" '];
-    out_img_loc = ['-oidir "', [output, p_dirs(p).name], '" '];
-    out_p_loc = ['-opdir "', [output, p_dirs(p).name], '" '];
-    command_c = cat(2, command, input_loc, out_img_loc, out_p_loc);
+    input_loc = ['-gaze -fdir "', [database_root, p_dirs(p).name], '" '];
+    out_img_loc = ['-out_dir "', [output, p_dirs(p).name], '" '];
+    command_c = cat(2, command, input_loc, out_img_loc);
 
     if(isunix)
         unix(command_c, '-echo');
     else
         dos(command_c);
-    end;
+    end
 
 end
 %%
@@ -65,29 +64,36 @@ for p=1:numel(p_dirs)
 
     for i=1:size(filenames, 1)
 
-        fname = sprintf('%s/%s/%d_%d_%d_%d_%d_%d_%d_det_0.pose', output, p_dirs(p).name,...
+        fname = sprintf('%s/%s/%d_%d_%d_%d_%d_%d_%d.csv', output, p_dirs(p).name,...
              filenames(i,1), filenames(i,2), filenames(i,3), filenames(i,4),...
              filenames(i,5), filenames(i,6), filenames(i,7));
-        try            
-            A = dlmread(fname, ' ', 'A79..F79');       
-            valid = true;
-        catch
-            A = zeros(1,6);
-            A(1,3) = -1;
-            A(1,6) = -1;
-            valid = false;
+        
+        if(p==1 && i==1)
+            % First read in the column names
+            tab = readtable(fname);
+            column_names = tab.Properties.VariableNames;
+
+            gaze_0_ids = cellfun(@(x) ~isempty(x) && x==1, strfind(column_names, 'gaze_0_'));
+            gaze_1_ids = cellfun(@(x) ~isempty(x) && x==1, strfind(column_names, 'gaze_1_'));
+        end
+        
+        if(exist(fname, 'file'))
+            all_params  = dlmread(fname, ',', 1, 0);
+        else
+            all_params = [];
+        end
+        
+        % If there was a face detected
+        if(size(all_params,1)>0)
+            predictions_r(curr,:) = all_params(1,gaze_0_ids);
+            predictions_l(curr,:) = all_params(1,gaze_1_ids);
+        else
+            predictions_r(curr,:) = [0,0,-1];
+            predictions_l(curr,:) = [0,0,-1];            
         end
 
         head_rot = headpose(i,1:3);
-     
-        predictions_r(curr,:) = A(1:3);
-        predictions_l(curr,:) = A(4:6);  
-        
-        if(~valid)
-            predictions_r(curr,:) = [0,0,-1];
-            predictions_l(curr,:) = [0,0,-1];
-        end
-                
+ 
         gt_r(curr,:) = data.right.gaze(i,:)';
         gt_r(curr,:) = gt_r(curr,:) / norm(gt_r(curr,:));
         gt_l(curr,:) = data.left.gaze(i,:)';

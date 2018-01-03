@@ -16,7 +16,7 @@ seq_ids = {};
 
 for i = 1:numel(seqNames)
     
-    [frame t, rels, sc tx ty tz rx ry rz] = textread([resDir seqNames{i} '.txt'], '%f, %f, %f, %f, %f, %f, %f, %f, %f, %f', 'headerlines', 1);
+    [frame t, rels, sc tx ty tz rx ry rz] = textread([resDir seqNames{i} '.csv'], '%f, %f, %f, %f, %f, %f, %f, %f, %f, %f', 'headerlines', 1);
     posesGround =  load ([gtDir seqNames{i} '.dat']);
 
     % the reliabilities of head pose

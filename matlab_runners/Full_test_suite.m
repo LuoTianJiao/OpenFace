@@ -23,7 +23,7 @@ cd('../');
 cd('Action Unit Experiments');
 run_AU_prediction_Bosphorus
 assert(mean(cccs_reg) > 0.56);
-assert(mean(f1s_class) > 0.46);
+assert(mean(f1s_class) > 0.49);
 
 run_AU_prediction_BP4D
 assert(mean(ints_cccs) > 0.6);
@@ -48,10 +48,14 @@ assert(median_error < 9.0)
 cd('../');
 
 %% Demos
+clear;
+close all;
 cd('Demos');
 run_demo_images;
 run_demo_videos;
 run_demo_video_multi;
+run_demo_align_size;
+run_test_img_seq;
 feature_extraction_demo_vid;
 feature_extraction_demo_img_seq;
 gaze_extraction_demo_vid;

@@ -8,38 +8,22 @@ end
 in_dir  = '../../samples/';
 out_dir = './demo_img/';
 
-if(~exist(out_dir, 'file'))
-    mkdir(out_dir);
-end
+model = 'model/main_clnf_general.txt'; % Trained on in the wild and multi-pie data (a CLNF model)
 
-% some parameters
-verbose = true;
+% Uncomment the below models if you want to try them
+%model = 'model/main_clnf_wild.txt'; % Trained on in-the-wild data only
 
-% Trained on in the wild and multi-pie data (less accurate CLM model)
-% model = 'model/main_clm_general.txt';
-% Trained on in-the-wild
-%model = 'model/main_clm_wild.txt';
+%model = 'model/main_clm_general.txt'; % Trained on in the wild and multi-pie data (less accurate SVR/CLM model)
+%model = 'model/main_clm_wild.txt'; % Trained on in-the-wild
 
-% Trained on in the wild and multi-pie data (more accurate CLNF model)
-model = 'model/main_clnf_general.txt';
-% Trained on in-the-wild
-%model = 'model/main_clnf_wild.txt';
-
-command = executable;
-
-command = cat(2, command, [' -fdir "' in_dir '"']);
-
-if(verbose)
-    command = cat(2, command, [' -ofdir "' out_dir '"']);
-    command = cat(2, command, [' -oidir "' out_dir '"']);
-end
-
-command = cat(2, command, [' -mloc "', model, '"']);
+% Load images (-fdir), output images and all the features (-out_dir), use a
+% user specified model (-mloc), and visualize everything (-verbose)
+command = sprintf('%s -fdir "%s" -out_dir "%s" -verbose -mloc "%s" ', executable, in_dir, out_dir, model);
 
 % Demonstrates the multi-hypothesis slow landmark detection (more accurate
 % when dealing with non-frontal faces and less accurate face detections)
 % Comment to skip this functionality
-command = cat(2, command, ' -wild ');
+command = cat(2, command, ' -wild -multi_view 1');
 
 if(isunix)
     unix(command);

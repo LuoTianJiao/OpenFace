@@ -248,7 +248,7 @@ int GetViewId(const vector<cv::Vec3d> orientations_all, const cv::Vec3d& orienta
 	
 }
 
-std::pair<std::vector<std::pair<string, double>>, std::vector<std::pair<string, double>>> FaceAnalyser::PredictStaticAUs(const cv::Mat& frame, const cv::Mat_<float>& detected_landmarks, bool visualise)
+void FaceAnalyser::PredictStaticAUsAndComputeFeatures(const cv::Mat& frame, const cv::Mat_<float>& detected_landmarks)
 {
 	
 	// Extract shape parameters from the detected landmarks
@@ -259,6 +259,16 @@ std::pair<std::vector<std::pair<string, double>>, std::vector<std::pair<string, 
 	// First align the face
 	AlignFaceMask(aligned_face_for_au, frame, detected_landmarks, params_global, pdm, triangulation, true, 0.7, 112, 112);
 	
+	// If the output requirement matches use the already computed one, else compute it again
+	if (align_scale_out == align_scale_au && align_width_out == align_width_au && align_height_out == align_height_au)
+	{
+		aligned_face_for_output = aligned_face_for_au.clone();
+	}
+	else
+	{
+		AlignFaceMask(aligned_face_for_output, frame, detected_landmarks, params_global, pdm, triangulation, true, align_scale_out, align_width_out, align_height_out);
+	}
+
 	// Extract HOG descriptor from the frame and convert it to a useable format
 	cv::Mat_<double> hog_descriptor;
 	Extract_FHOG_descriptor(hog_descriptor, aligned_face_for_au, this->num_hog_rows, this->num_hog_cols);
@@ -285,13 +295,7 @@ std::pair<std::vector<std::pair<string, double>>, std::vector<std::pair<string, 
 	//cv::Mat_<uchar> aligned_face_cols(1, aligned_face_for_au.cols * aligned_face_for_au.rows * aligned_face_for_au.channels(), aligned_face_for_au.data, 1);
 	//cv::Mat_<double> aligned_face_cols_double;
 	//aligned_face_cols.convertTo(aligned_face_cols_double, CV_64F);
-
-	// Visualising the median HOG
-	if (visualise)
-	{
-		FaceAnalysis::Visualise_FHOG(hog_descriptor, num_hog_rows, num_hog_cols, hog_descriptor_visualisation);
-	}
-
+	
 	// Perform AU prediction	
 	auto AU_predictions_intensity = PredictCurrentAUs(orientation_to_use);
 	auto AU_predictions_occurence = PredictCurrentAUsClass(orientation_to_use);
@@ -305,12 +309,13 @@ std::pair<std::vector<std::pair<string, double>>, std::vector<std::pair<string, 
 		if (AU_predictions_intensity[au].second > 5)
 			AU_predictions_intensity[au].second = 5;
 	}
-
-	return std::pair<std::vector<std::pair<std::string, double>>, std::vector<std::pair<std::string, double>>>(AU_predictions_intensity, AU_predictions_occurence);
+	
+	AU_predictions_reg = AU_predictions_intensity;
+	AU_predictions_class = AU_predictions_occurence;
 
 }
 
-void FaceAnalyser::AddNextFrame(const cv::Mat& frame, const cv::Mat_<float>& detected_landmarks, bool success, double timestamp_seconds, bool online, bool visualise)
+void FaceAnalyser::AddNextFrame(const cv::Mat& frame, const cv::Mat_<float>& detected_landmarks, bool success, double timestamp_seconds, bool online)
 {
 
 	frames_tracking++;
@@ -318,11 +323,12 @@ void FaceAnalyser::AddNextFrame(const cv::Mat& frame, const cv::Mat_<float>& det
 	// Extract shape parameters from the detected landmarks
 	cv::Vec6f params_global;
 	cv::Mat_<float> params_local;
-	pdm.CalcParams(params_global, params_local, detected_landmarks);
 
 	// First align the face if tracking was successfull
 	if(success)
 	{
+
+		pdm.CalcParams(params_global, params_local, detected_landmarks);
 
 		// The aligned face requirement for AUs
 		AlignFaceMask(aligned_face_for_au, frame, detected_landmarks, params_global, pdm, triangulation, true, align_scale_au, align_width_au, align_height_au);
@@ -343,6 +349,7 @@ void FaceAnalyser::AddNextFrame(const cv::Mat& frame, const cv::Mat_<float>& det
 		aligned_face_for_au = cv::Mat(align_height_au, align_width_au, CV_8UC3);
 		aligned_face_for_output.setTo(0);
 		aligned_face_for_au.setTo(0);
+		params_local = cv::Mat_<float>(pdm.NumberOfModes(), 1, 0.0f);
 	}
 
 	if (aligned_face_for_output.channels() == 3 && out_grayscale)
@@ -423,21 +430,9 @@ void FaceAnalyser::AddNextFrame(const cv::Mat& frame, const cv::Mat_<float>& det
 	{
 		UpdateRunningMedian(this->geom_desc_hist, this->geom_hist_sum, this->geom_descriptor_median, geom_descriptor_frame, update_median, this->num_bins_geom, this->min_val_geom, this->max_val_geom);
 	}
-
-	// Visualising the median HOG
-	if(visualise)
-	{
-		FaceAnalysis::Visualise_FHOG(hog_descriptor, num_hog_rows, num_hog_cols, hog_descriptor_visualisation);
-	}
-
+	
 	// Perform AU prediction	
 	AU_predictions_reg = PredictCurrentAUs(orientation_to_use);
-
-	std::vector<std::pair<std::string, double>> AU_predictions_reg_corrected;
-	if(online)
-	{
-		AU_predictions_reg_corrected = CorrectOnlineAUs(AU_predictions_reg, orientation_to_use, true, false, success, true);
-	}
 
 	// Add the reg predictions to the historic data
 	for (size_t au = 0; au < AU_predictions_reg.size(); ++au)
@@ -452,6 +447,9 @@ void FaceAnalyser::AddNextFrame(const cv::Mat& frame, const cv::Mat_<float>& det
 		else
 		{
 			AU_predictions_reg_all_hist[AU_predictions_reg[au].first].push_back(0);
+
+			// Also invalidate AU if not successful
+			AU_predictions_reg[au].second = 0;
 		}
 	}
 	
@@ -469,22 +467,26 @@ void FaceAnalyser::AddNextFrame(const cv::Mat& frame, const cv::Mat_<float>& det
 		else
 		{
 			AU_predictions_class_all_hist[AU_predictions_class[au].first].push_back(0);
-		}
-	}
-	
 
-	if(online)
+			// Also invalidate AU if not successful
+			AU_predictions_class[au].second = 0;
+		}
+	}	
+
+	// A workaround for online predictions to make them a bit more accurate
+	std::vector<std::pair<std::string, double>> AU_predictions_reg_corrected;
+	if (online)
 	{
+		AU_predictions_reg_corrected = CorrectOnlineAUs(AU_predictions_reg, orientation_to_use, true, false, success, true);
 		AU_predictions_reg = AU_predictions_reg_corrected;
 	}
-	else
+
+	// Useful for prediction corrections (calibration after the whole video is processed)
+	if (success && frames_tracking_succ - 1 < max_init_frames)
 	{
-		if (success && frames_tracking_succ - 1 < max_init_frames)
-		{
-			hog_desc_frames_init.push_back(hog_descriptor);
-			geom_descriptor_frames_init.push_back(geom_descriptor_frame);
-			views.push_back(orientation_to_use);
-		}
+		hog_desc_frames_init.push_back(hog_descriptor);
+		geom_descriptor_frames_init.push_back(geom_descriptor_frame);
+		views.push_back(orientation_to_use);
 	}
 
 	this->current_time_seconds = timestamp_seconds;
@@ -982,11 +984,6 @@ vector<pair<string, double>> FaceAnalyser::PredictCurrentAUsClass(int view)
 	return predictions;
 }
 
-cv::Mat FaceAnalyser::GetLatestHOGDescriptorVisualisation()
-{
-	return hog_descriptor_visualisation;
-}
-
 vector<pair<string, double>> FaceAnalyser::GetCurrentAUsClass() const
 {
 	return AU_predictions_class;
@@ -1324,7 +1321,10 @@ void FaceAnalyser::PostprocessOutputFile(string output_file)
 	// Now overwrite the whole file
 	std::ofstream outfile(output_file, ios_base::out);
 	// Write the header
-	outfile << std::setprecision(4);
+	outfile << std::setprecision(2);
+	outfile << std::fixed;
+	outfile << std::noshowpoint;
+
 	outfile << output_file_contents[0].c_str() << endl;
 
 	// Write the contents

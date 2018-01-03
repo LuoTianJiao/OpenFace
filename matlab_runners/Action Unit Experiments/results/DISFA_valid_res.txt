@@ -9,4 +9,4 @@ AU15 results - corr 0.745, rms 0.269, ccc - 0.712
 AU17 results - corr 0.642, rms 0.517, ccc - 0.574
 AU20 results - corr 0.619, rms 0.311, ccc - 0.581
 AU25 results - corr 0.926, rms 0.500, ccc - 0.920
-AU26 results - corr 0.803, rms 0.449, ccc - 0.762
+AU26 results - corr 0.802, rms 0.449, ccc - 0.762

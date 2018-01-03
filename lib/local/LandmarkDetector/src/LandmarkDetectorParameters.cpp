@@ -148,12 +148,6 @@ FaceModelParameters::FaceModelParameters(vector<string> &arguments)
 			valid[i + 1] = false;
 			i++;
 		}
-		else if (arguments[i].compare("-gaze") == 0)
-		{
-			track_gaze = true;
-
-			valid[i] = false;
-		}
 		else if (arguments[i].compare("-q") == 0)
 		{
 
@@ -253,7 +247,7 @@ void FaceModelParameters::init()
 	reg_factor = 25;
 	weight_factor = 0; // By default do not use NU-RLMS for videos as it does not work as well for them
 
-	validation_boundary = -0.45;
+	validation_boundary = 0.725;
 
 	limit_pose = true;
 	multi_view = false;
@@ -267,7 +261,5 @@ void FaceModelParameters::init()
 	// By default use HOG SVM
 	curr_face_detector = HOG_SVM_DETECTOR;
 
-	// The gaze tracking has to be explicitly initialised
-	track_gaze = false;
 }
 

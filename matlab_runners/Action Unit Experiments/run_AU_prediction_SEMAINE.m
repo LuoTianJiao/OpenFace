@@ -5,10 +5,6 @@ find_SEMAINE;
 
 out_loc = './out_SEMAINE/';
 
-if(~exist(out_loc, 'dir'))
-    mkdir(out_loc);
-end
-
 if(isunix)
     executable = '"../../build/bin/FeatureExtraction"';
 else
@@ -24,14 +20,9 @@ parfor f1=1:numel(devel_recs)
 
         f1_dir = devel_recs{f1};
 
-        command = [executable, ' -fx 800 -fy 800 -q -no2Dfp -no3Dfp -noMparams -noPose -noGaze '];
-
         curr_vid = [SEMAINE_dir, f1_dir, '/', vid_file.name];
 
-        name = f1_dir;
-        output_aus = [out_loc name '.au.txt'];
-
-        command = cat(2, command, [' -f "' curr_vid '" -of "' output_aus, '"']);
+        command = sprintf('%s -aus -f "%s" -out_dir "%s" ', executable, curr_vid, out_loc);
         
         if(isunix)
             unix(command, '-echo');
@@ -43,26 +34,19 @@ parfor f1=1:numel(devel_recs)
 end
 
 %% Actual model evaluation
-[ labels, valid_ids, vid_ids  ] = extract_SEMAINE_labels(SEMAINE_dir, devel_recs, aus_SEMAINE);
+[ labels, valid_ids, vid_ids, vid_names ] = extract_SEMAINE_labels(SEMAINE_dir, devel_recs, aus_SEMAINE);
 
 labels_gt = cat(1, labels{:});
 
 %% Identifying which column IDs correspond to which AU
-tab = readtable([out_loc, devel_recs{1}, '.au.txt']);
+tab = readtable([out_loc, vid_names{1}, '.csv']);
 column_names = tab.Properties.VariableNames;
 
 % As there are both classes and intensities list and evaluate both of them
-aus_pred_int = [];
 aus_pred_class = [];
-
-inds_int_in_file = [];
 inds_class_in_file = [];
 
 for c=1:numel(column_names)
-    if(strfind(column_names{c}, '_r') > 0)
-        aus_pred_int = cat(1, aus_pred_int, int32(str2num(column_names{c}(3:end-2))));
-        inds_int_in_file = cat(1, inds_int_in_file, c);
-    end
     if(strfind(column_names{c}, '_c') > 0)
         aus_pred_class = cat(1, aus_pred_class, int32(str2num(column_names{c}(3:end-2))));
         inds_class_in_file = cat(1, inds_class_in_file, c);
@@ -70,37 +54,20 @@ for c=1:numel(column_names)
 end
 
 %%
-inds_au_int = zeros(size(aus_SEMAINE));
 inds_au_class = zeros(size(aus_SEMAINE));
 
 for ind=1:numel(aus_SEMAINE)  
-    if(~isempty(find(aus_pred_int==aus_SEMAINE(ind), 1)))
-        inds_au_int(ind) = find(aus_pred_int==aus_SEMAINE(ind));
-    end
-end
-
-for ind=1:numel(aus_SEMAINE)  
     if(~isempty(find(aus_pred_class==aus_SEMAINE(ind), 1)))
-        inds_au_class(ind) = find(aus_pred_class==aus_SEMAINE(ind));
+        inds_au_class(ind) = inds_class_in_file(aus_pred_class==aus_SEMAINE(ind));
     end
 end
 
-preds_all_class = [];
-preds_all_int = [];
-
-for i=1:numel(devel_recs)
+preds_all = [];
+for i=1:numel(vid_names)
    
-    fname = [out_loc, devel_recs{i}, '.au.txt'];
+    fname = [out_loc, vid_names{i}, '.csv'];
     preds = dlmread(fname, ',', 1, 0);
-    
-    % Read all of the intensity AUs
-    preds_int = preds(vid_ids(i,1):vid_ids(i,2) - 1, inds_int_in_file);
-    
-    % Read all of the classification AUs
-    preds_class = preds(vid_ids(i,1):vid_ids(i,2) - 1, inds_class_in_file);
-    
-    preds_all_class = cat(1, preds_all_class, preds_class);
-    preds_all_int = cat(1, preds_all_int, preds_int);
+    preds_all = cat(1, preds_all, preds(vid_ids(i,1):vid_ids(i,2) - 1, :));
 end
 
 %%
@@ -109,10 +76,10 @@ f1s = zeros(1, numel(aus_SEMAINE));
 for au = 1:numel(aus_SEMAINE)
     
     if(inds_au_class(au) ~= 0)
-        tp = sum(labels_gt(:,au) == 1 & preds_all_class(:, inds_au_class(au)) == 1);
-        fp = sum(labels_gt(:,au) == 0 & preds_all_class(:, inds_au_class(au)) == 1);
-        fn = sum(labels_gt(:,au) == 1 & preds_all_class(:, inds_au_class(au)) == 0);
-        tn = sum(labels_gt(:,au) == 0 & preds_all_class(:, inds_au_class(au)) == 0);
+        tp = sum(labels_gt(:,au) == 1 & preds_all(:, inds_au_class(au)) == 1);
+        fp = sum(labels_gt(:,au) == 0 & preds_all(:, inds_au_class(au)) == 1);
+        fn = sum(labels_gt(:,au) == 1 & preds_all(:, inds_au_class(au)) == 0);
+        tn = sum(labels_gt(:,au) == 0 & preds_all(:, inds_au_class(au)) == 0);
 
         precision = tp./(tp+fp);
         recall = tp./(tp+fn);

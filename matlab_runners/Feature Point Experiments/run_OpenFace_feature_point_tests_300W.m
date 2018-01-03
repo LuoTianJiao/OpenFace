@@ -9,40 +9,26 @@ elseif(exist('D:/Dropbox/Dropbox/AAM/test data/', 'file'))
     database_root = 'D:/Dropbox/Dropbox/AAM/test data/';
 elseif(exist('F:/Dropbox/AAM/test data/', 'file'))
     database_root = 'F:/Dropbox/AAM/test data/';
-else
+elseif(exist('/multicomp/datasets/300-W/', 'file'))
     database_root = '/multicomp/datasets/300-W/';
+elseif(exist('/media/tadas/5E08AE0D08ADE3ED/Dropbox/AAM/test data/', 'file'))
+    database_root = '/media/tadas/5E08AE0D08ADE3ED/Dropbox/AAM/test data/';
 end
 
 %% Run using CLNF in the wild model
 out_clnf = [curr_dir '/out_wild_clnf_wild/'];
-if(~exist(out_clnf, 'file'))
-   mkdir(out_clnf); 
-end
-
 [err_clnf_wild, err_no_out_clnf_wild] = Run_OF_on_images(out_clnf, database_root, 'use_afw', 'use_lfpw', 'use_ibug', 'use_helen', 'verbose', 'model', 'model/main_clnf_wild.txt', 'multi_view', 1);
 
 %% Run using SVR model
 out_svr = [curr_dir '/out_wild_svr_wild/'];
-if(~exist(out_svr, 'file'))
-   mkdir(out_svr); 
-end
-
 [err_svr_wild, err_no_out_svr_wild] = Run_OF_on_images(out_svr, database_root, 'use_afw', 'use_lfpw', 'use_ibug', 'use_helen', 'verbose', 'model', 'model/main_clm_wild.txt', 'multi_view', 1);                
 
 %% Run using general CLNF model
 out_clnf = [curr_dir '/out_wild_clnf/'];
-if(~exist(out_clnf, 'file'))
-   mkdir(out_clnf); 
-end
-
 [err_clnf, err_no_out_clnf] = Run_OF_on_images(out_clnf, database_root, 'use_afw', 'use_lfpw', 'use_ibug', 'use_helen', 'verbose', 'model', 'model/main_clnf_general.txt', 'multi_view', 1);
 
 %% Run using SVR model
 out_svr = [curr_dir '/out_wild_svr/'];
-if(~exist(out_svr, 'file'))
-   mkdir(out_svr); 
-end
-
 [err_svr, err_no_out_svr] = Run_OF_on_images(out_svr, database_root, 'use_afw', 'use_lfpw', 'use_ibug', 'use_helen', 'verbose', 'model', 'model/main_clm_general.txt', 'multi_view', 1);                
 
 %%
@@ -93,7 +79,7 @@ load('landmark_det_baselines/zhu_wild.mat');
 load('out_wild_clnf_wild/res.mat');    
 for i=1:size(labels,3)
     
-    diffs = squeeze(sum(sum(bsxfun(@plus, labels_all(18:end,:,:)-0.5, - labels([18:60,62:64,66:end],:,i)),1),2));
+    diffs = squeeze(sum(sum(bsxfun(@plus, labels_all(18:end,:,:)-1.5, - labels([18:60,62:64,66:end],:,i)),1),2));
     inds_in_cpp = cat(1, inds_in_cpp, find(diffs == 0));
 
 end
