@@ -4,12 +4,12 @@ find_BP4D;
 BP4D_dir = [BP4D_dir, '../BP4D-training/'];
 out_loc = './out_bp4d/';
 
-if(~exist(out_loc, 'dir'))
-    mkdir(out_loc);
-end
-
 %%
-executable = '"../../x64/Release/FeatureExtraction.exe"';
+if(isunix)
+    executable = '"../../build/bin/FeatureExtraction"';
+else
+    executable = '"../../x64/Release/FeatureExtraction.exe"';
+end
 
 bp4d_dirs = {'F002', 'F004', 'F006', 'F008', 'F010', 'F012', 'F014', 'F016', 'F018', 'F020', 'F022', 'M002', 'M004', 'M006', 'M008', 'M010', 'M012', 'M014', 'M016', 'M018'};
 
@@ -23,7 +23,7 @@ new_bp4d_dirs = {};
 for i = 1:numel(bp4d_dirs)
     dirs = dir([BP4D_dir, '/', bp4d_dirs{i}, '/T*']);
 
-    tmp_dir = [BP4D_dir, '/../tmp/', bp4d_dirs{i}, '/'];
+    tmp_dir = [BP4D_dir, '/../tmp/', bp4d_dirs{i}];
     new_bp4d_dirs = cat(1, new_bp4d_dirs, tmp_dir);
 
     if(~exist(tmp_dir, 'file'))
@@ -51,18 +51,15 @@ for i = 1:numel(bp4d_dirs)
 end
 %%
 
-parfor f1=1:numel(new_bp4d_dirs)
+for f1=1:numel(new_bp4d_dirs)
     
-    command = [executable ' -asvid -no2Dfp -no3Dfp -noMparams -noPose -noGaze '];
+    command = sprintf('%s -aus -fdir "%s" -out_dir "%s"', executable, new_bp4d_dirs{f1}, out_loc);
 
-    [f,~,~] = fileparts(new_bp4d_dirs{f1});
-    [~,f,~] = fileparts(f);
-    output_file = [out_loc f '.au.txt'];
-
-    command = cat(2, command, [' -fdir "' new_bp4d_dirs{f1} '" -of "' output_file '"']);
-
-    dos(command);
-
+    if(isunix)
+        unix(command, '-echo')
+    else
+        dos(command);
+    end
 end
 
 %%
@@ -76,7 +73,7 @@ aus_BP4D = [1, 2, 4, 6, 7, 10, 12, 14, 15, 17, 23];
 labels_gt = cat(1, labels_gt{:});
 
 %% Identifying which column IDs correspond to which AU
-tab = readtable([out_loc, bp4d_dirs{1}, '.au.txt']);
+tab = readtable([out_loc, bp4d_dirs{1}, '.csv']);
 column_names = tab.Properties.VariableNames;
 
 % As there are both classes and intensities list and evaluate both of them
@@ -110,10 +107,9 @@ preds_all_class = [];
 
 for i=1:numel(new_bp4d_dirs)
    
-    [f,~,~] = fileparts(new_bp4d_dirs{i});
-    [~,f,~] = fileparts(f);
+    [~,f,~] = fileparts(new_bp4d_dirs{i});
     
-    fname = [out_loc, f, '.au.txt'];
+    fname = [out_loc, f, '.csv'];
     preds = dlmread(fname, ',', 1, 0);
     
     
@@ -157,7 +153,7 @@ valid_ids = cat(1, valid_ids{:});
 labels_gt = cat(1, labels_gt{:});
 
 %% Identifying which column IDs correspond to which AU
-tab = readtable([out_loc, bp4d_dirs{1}, '.au.txt']);
+tab = readtable([out_loc, bp4d_dirs{1}, '.csv']);
 column_names = tab.Properties.VariableNames;
 
 % As there are both classes and intensities list and evaluate both of them
@@ -184,10 +180,9 @@ preds_all_int = [];
 
 for i=1:numel(new_bp4d_dirs)
    
-    [f,~,~] = fileparts(new_bp4d_dirs{i});
-    [~,f,~] = fileparts(f);
-    
-    fname = [out_loc, f, '.au.txt'];
+    [~,f,~] = fileparts(new_bp4d_dirs{i});
+        
+    fname = [out_loc, f, '.csv'];
     preds = dlmread(fname, ',', 1, 0);
     
     % Read all of the intensity AUs

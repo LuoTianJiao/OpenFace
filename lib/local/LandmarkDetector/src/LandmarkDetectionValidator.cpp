@@ -488,6 +488,10 @@ double DetectionValidator::Check(const cv::Vec3d& orientation, const cv::Mat_<uc
 		//dec = CheckCNN(warped, id);
 		dec = CheckCNN_tbb(warped, id);
 	}
+
+	// Convert it to a more interpretable signal (0 low confidence, 1 high confidence)
+	dec = 0.5 * (1 - dec);
+
 	return dec;
 }
 

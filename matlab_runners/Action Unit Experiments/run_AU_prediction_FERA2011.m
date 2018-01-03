@@ -5,10 +5,6 @@ find_FERA2011;
 
 out_loc = './out_fera/';
 
-if(~exist(out_loc, 'dir'))
-    mkdir(out_loc);
-end
-
 %%
 if(isunix)
     executable = '"../../build/bin/FeatureExtraction"';
@@ -18,20 +14,17 @@ end
 
 fera_dirs = dir([FERA2011_dir, 'train*']);
 
-parfor f1=1:numel(fera_dirs)
+for f1=1:numel(fera_dirs)
 
     vid_files = dir([FERA2011_dir, fera_dirs(f1).name, '/*.avi']);
 
     for v=1:numel(vid_files)
 
-        command = [executable ' -asvid -q -no2Dfp -no3Dfp -noMparams -noPose -noGaze -au_static '];
+        command = [executable ' -aus -au_static '];
 
         curr_vid = [FERA2011_dir, fera_dirs(f1).name, '/', vid_files(v).name];
 
-        [~,name,~] = fileparts(curr_vid);
-        output_file = [out_loc name '.au.txt'];
-
-        command = cat(2, command, [' -f "' curr_vid '" -of "' output_file '"']);
+        command = cat(2, command, [' -f "' curr_vid '" -out_dir "' out_loc '"']);
 
         if(isunix)
             unix(command, '-echo');
@@ -50,7 +43,7 @@ for i=1:numel(filenames)
 end
 
 %% Identifying which column IDs correspond to which AU
-tab = readtable([out_loc, 'train_001.au.txt']);
+tab = readtable([out_loc, 'train_001.csv']);
 column_names = tab.Properties.VariableNames;
 
 % As there are both classes and intensities list and evaluate both of them
@@ -79,7 +72,7 @@ preds_all_class = [];
 
 for i=1:numel(filenames)
    
-    fname = dir([out_loc, '/*', filenames{i}, '.au.txt']);
+    fname = dir([out_loc, '/*', filenames{i}, '.csv']);
     fname = fname(1).name;
     
     preds = dlmread([out_loc '/' fname], ',', 1, 0);

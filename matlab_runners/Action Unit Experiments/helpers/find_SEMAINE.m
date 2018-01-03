@@ -12,6 +12,8 @@ elseif(exist('D:/fera_2015/semaine/SEMAINE-Sessions/', 'file'))
     SEMAINE_dir = 'D:/fera_2015/semaine/SEMAINE-Sessions/';
 elseif(exist('/multicomp/datasets/face_datasets/FERA_2015/Semaine/SEMAINE-Sessions/', 'file'))
     SEMAINE_dir = '/multicomp/datasets/face_datasets/FERA_2015/Semaine/SEMAINE-Sessions/';
+elseif(exist('/media/tadas/2EBEA130BEA0F20F/datasets/FERA_2015/semaine/SEMAINE-Sessions/', 'file'))
+    SEMAINE_dir = '/media/tadas/2EBEA130BEA0F20F/datasets/FERA_2015/semaine/SEMAINE-Sessions/';
 else
     fprintf('SEMAINE location not found (or not defined)\n'); 
 end

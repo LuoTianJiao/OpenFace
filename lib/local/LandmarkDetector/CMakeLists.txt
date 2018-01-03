@@ -6,6 +6,9 @@ include_directories(${BOOST_INCLUDE_DIR})
 #OpenBlas library
 include_directories(../../3rdParty/OpenBLAS/include)
 
+#Utilities library
+include_directories(../../local/Utilities/include)
+
 SET(SOURCE
     src/CCNF_patch_expert.cpp
 	src/LandmarkDetectionValidator.cpp

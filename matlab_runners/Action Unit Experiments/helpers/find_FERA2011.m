@@ -4,6 +4,8 @@ elseif(exist('/multicomp/datasets/fera2011/', 'file'))
     FERA2011_dir = '/multicomp/datasets/fera2011/au_training/';   
 elseif(exist('E:\Datasets\fera/au_training', 'file'))
     FERA2011_dir = 'E:\Datasets\fera/au_training/';  
+elseif(exist('/media/tadas/2EBEA130BEA0F20F/datasets/fera/au_training/', 'file'))
+    FERA2011_dir = '/media/tadas/2EBEA130BEA0F20F/datasets/fera/au_training/';  
 else
     fprintf('FERA2011 location not found (or not defined)\n'); 
 end

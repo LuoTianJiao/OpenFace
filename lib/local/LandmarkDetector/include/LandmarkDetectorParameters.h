@@ -102,9 +102,6 @@ struct FaceModelParameters
 	// Should the parameters be refined for different scales
 	bool refine_parameters;
 
-	// Using the brand new and experimental gaze tracker
-	bool track_gaze;
-
 	FaceModelParameters();
 
 	FaceModelParameters(vector<string> &arguments);

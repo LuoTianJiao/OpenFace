@@ -35,6 +35,7 @@
 #include "stdafx.h"
 
 #include <LandmarkDetectorFunc.h>
+#include "RotationHelpers.h"
 
 // OpenCV includes
 #include <opencv2/core/core.hpp>
@@ -83,7 +84,7 @@ cv::Vec6d LandmarkDetector::GetPose(const CLNF& clnf_model, float fx, float fy, 
 
 		cv::solvePnP(landmarks_3D, landmarks_2D, camera_matrix, cv::Mat(), vec_rot, vec_trans, true);
 
-		cv::Vec3d euler = LandmarkDetector::AxisAngle2Euler(vec_rot);
+		cv::Vec3d euler = Utilities::AxisAngle2Euler(vec_rot);
 
 		return cv::Vec6d(vec_trans[0], vec_trans[1], vec_trans[2], euler[0], euler[1], euler[2]);
 	}
@@ -136,12 +137,12 @@ cv::Vec6d LandmarkDetector::GetPoseWRTCamera(const CLNF& clnf_model, float fx, f
 		double z_y = cv::sqrt(vec_trans[1] * vec_trans[1] + vec_trans[2] * vec_trans[2]);
 		double eul_y = -atan2(vec_trans[0], z_y);
 
-		cv::Matx33d camera_rotation = LandmarkDetector::Euler2RotationMatrix(cv::Vec3d(eul_x, eul_y, 0));
-		cv::Matx33d head_rotation = LandmarkDetector::AxisAngle2RotationMatrix(vec_rot);
+		cv::Matx33d camera_rotation = Utilities::Euler2RotationMatrix(cv::Vec3d(eul_x, eul_y, 0));
+		cv::Matx33d head_rotation = Utilities::AxisAngle2RotationMatrix(vec_rot);
 
 		cv::Matx33d corrected_rotation = camera_rotation * head_rotation;
 
-		cv::Vec3d euler_corrected = LandmarkDetector::RotationMatrix2Euler(corrected_rotation);
+		cv::Vec3d euler_corrected = Utilities::RotationMatrix2Euler(corrected_rotation);
 
 		return cv::Vec6d(vec_trans[0], vec_trans[1], vec_trans[2], euler_corrected[0], euler_corrected[1], euler_corrected[2]);
 	}
@@ -214,10 +215,10 @@ bool LandmarkDetector::DetectLandmarksInVideo(const cv::Mat_<uchar> &grayscale_i
 	// and using a smaller search area
 
 	// Indicating that this is a first detection in video sequence or after restart
-	bool initial_detection = !clnf_model.tracking_initialised;
+	bool initial_detection = !clnf_model.IsInitialized();
 
 	// Only do it if there was a face detection at all
-	if(clnf_model.tracking_initialised)
+	if(clnf_model.IsInitialized())
 	{
 
 		// The area of interest search size will depend if the previous track was successful
@@ -253,8 +254,8 @@ bool LandmarkDetector::DetectLandmarksInVideo(const cv::Mat_<uchar> &grayscale_i
 
 	// This is used for both detection (if it the tracking has not been initialised yet) or if the tracking failed (however we do this every n frames, for speed)
 	// This also has the effect of an attempt to reinitialise just after the tracking has failed, which is useful during large motions
-	if((!clnf_model.tracking_initialised && (clnf_model.failures_in_a_row + 1) % (params.reinit_video_every * 6) == 0) 
-		|| (clnf_model.tracking_initialised && !clnf_model.detection_success && params.reinit_video_every > 0 && clnf_model.failures_in_a_row % params.reinit_video_every == 0))
+	if((!clnf_model.IsInitialized() && (clnf_model.failures_in_a_row + 1) % (params.reinit_video_every * 6) == 0)
+		|| (clnf_model.IsInitialized() && !clnf_model.detection_success && params.reinit_video_every > 0 && clnf_model.failures_in_a_row % params.reinit_video_every == 0))
 	{
 
 		cv::Rect_<double> bounding_box;
@@ -289,7 +290,7 @@ bool LandmarkDetector::DetectLandmarksInVideo(const cv::Mat_<uchar> &grayscale_i
 		if(face_detection_success)
 		{
 			// Indicate that tracking has started as a face was detected
-			clnf_model.tracking_initialised = true;
+			clnf_model.SetInitialized(true);
 						
 			// Keep track of old model values so that they can be restored if redetection fails
 			cv::Vec6d params_global_init = clnf_model.params_global;
@@ -334,7 +335,7 @@ bool LandmarkDetector::DetectLandmarksInVideo(const cv::Mat_<uchar> &grayscale_i
 	}
 
 	// if the model has not been initialised yet class it as a failure
-	if(!clnf_model.tracking_initialised)
+	if(!clnf_model.IsInitialized())
 	{
 		clnf_model.failures_in_a_row++;
 	}
@@ -342,7 +343,7 @@ bool LandmarkDetector::DetectLandmarksInVideo(const cv::Mat_<uchar> &grayscale_i
 	// un-initialise the tracking
 	if(	clnf_model.failures_in_a_row > 100)
 	{
-		clnf_model.tracking_initialised = false;
+		clnf_model.SetInitialized(false);
 	}
 
 	return clnf_model.detection_success;
@@ -358,7 +359,7 @@ bool LandmarkDetector::DetectLandmarksInVideo(const cv::Mat_<uchar> &grayscale_i
 		clnf_model.pdm.CalcParams(clnf_model.params_global, bounding_box, clnf_model.params_local);		
 
 		// indicate that face was detected so initialisation is not necessary
-		clnf_model.tracking_initialised = true;
+		clnf_model.SetInitialized(true);
 	}
 
 	return DetectLandmarksInVideo(grayscale_image, clnf_model, params);
@@ -461,6 +462,9 @@ bool LandmarkDetector::DetectLandmarksInImage(const cv::Mat_<uchar> &grayscale_i
 		clnf_model.hierarchical_models[part].detected_landmarks = best_detected_landmarks_h[part].clone();
 		clnf_model.hierarchical_models[part].landmark_likelihoods = best_landmark_likelihoods_h[part].clone();
 	}
+
+	// To indicate that tracking/detection started and the values are valid, we assume that there is a face in the bounding box
+	clnf_model.SetInitialized(true);
 
 	return best_success;
 }

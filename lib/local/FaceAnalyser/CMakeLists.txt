@@ -10,6 +10,9 @@ include_directories(../../3rdParty/OpenBLAS/include)
 #LandmarkDetector library
 include_directories(../../local/LandmarkDetector/include)
 
+#Utilities library
+include_directories(../../local/Utilities/include)
+
 SET(SOURCE
     src/Face_utils.cpp
 	src/FaceAnalyser.cpp

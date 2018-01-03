@@ -48,18 +48,6 @@ namespace LandmarkDetector
 	//===========================================================================	
 	// Defining a set of useful utility functions to be used within CLNF
 
-
-	//=============================================================================================
-	// Helper functions for parsing the inputs
-	//=============================================================================================
-	void get_video_input_output_params(vector<string> &input_video_file, vector<string> &output_files,
-		vector<string> &output_video_files, string &output_codec, vector<string> &arguments);
-
-	void get_camera_params(int &device, float &fx, float &fy, float &cx, float &cy, vector<string> &arguments);
-
-	void get_image_input_output_params(vector<string> &input_image_files, vector<string> &output_feature_files, vector<string> &output_pose_files, vector<string> &output_image_files,
-		vector<cv::Rect_<double>> &input_bounding_boxes, vector<string> &arguments);
-
 	//===========================================================================
 	// Fast patch expert response computation (linear model across a ROI) using normalised cross-correlation
 	//===========================================================================
@@ -82,13 +70,6 @@ namespace LandmarkDetector
 	//===========================================================================
 	// Visualisation functions
 	//===========================================================================
-	void Project(cv::Mat_<double>& dest, const cv::Mat_<double>& mesh, double fx, double fy, double cx, double cy);
-	void DrawBox(cv::Mat image, cv::Vec6d pose, cv::Scalar color, int thickness, float fx, float fy, float cx, float cy);
-
-	// Drawing face bounding box
-	vector<std::pair<cv::Point2d, cv::Point2d>> CalculateBox(cv::Vec6d pose, float fx, float fy, float cx, float cy);
-	void DrawBox(vector<pair<cv::Point, cv::Point>> lines, cv::Mat image, cv::Scalar color, int thickness);
-
 	vector<cv::Point2d> CalculateVisibleLandmarks(const cv::Mat_<double>& shape2D, const cv::Mat_<int>& visibilities);
 	vector<cv::Point2d> CalculateVisibleLandmarks(const CLNF& clnf_model);
 	vector<cv::Point2d> CalculateVisibleEyeLandmarks(const CLNF& clnf_model);
@@ -96,28 +77,7 @@ namespace LandmarkDetector
 	vector<cv::Point2d> CalculateAllLandmarks(const cv::Mat_<double>& shape2D);
 	vector<cv::Point2d> CalculateAllLandmarks(const CLNF& clnf_model);
 	vector<cv::Point2d> CalculateAllEyeLandmarks(const CLNF& clnf_model);
-	void DrawLandmarks(cv::Mat img, vector<cv::Point> landmarks);
-
-	void Draw(cv::Mat img, const cv::Mat_<double>& shape2D, const cv::Mat_<int>& visibilities);
-	void Draw(cv::Mat img, const cv::Mat_<double>& shape2D);
-	void Draw(cv::Mat img, const CLNF& clnf_model);
-
-
-	//===========================================================================
-	// Angle representation conversion helpers
-	//===========================================================================
-	cv::Matx33d Euler2RotationMatrix(const cv::Vec3d& eulerAngles);
-
-	// Using the XYZ convention R = Rx * Ry * Rz, left-handed positive sign
-	cv::Vec3d RotationMatrix2Euler(const cv::Matx33d& rotation_matrix);
-
-	cv::Vec3d Euler2AxisAngle(const cv::Vec3d& euler);
-
-	cv::Vec3d AxisAngle2Euler(const cv::Vec3d& axis_angle);
-
-	cv::Matx33d AxisAngle2RotationMatrix(const cv::Vec3d& axis_angle);
-
-	cv::Vec3d RotationMatrix2AxisAngle(const cv::Matx33d& rotation_matrix);
+	vector<cv::Point3d> Calculate3DEyeLandmarks(const CLNF& clnf_model, double fx, double fy, double cx, double cy);
 
 	//============================================================================
 	// Face detection helpers
