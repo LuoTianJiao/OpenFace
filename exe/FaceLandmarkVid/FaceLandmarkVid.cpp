@@ -137,7 +137,8 @@ void visualise_tracking(cv::Mat& captured_image, const LandmarkDetector::CLNF& f
 	string fpsSt("FPS:");
 	fpsSt += fpsC;
 	cv::putText(captured_image, fpsSt, cv::Point(10, 20), CV_FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(255, 0, 0));
-
+	string txtoutput = "MarkPoint";
+	cv::putText(captured_image,txtoutput,cv::Point(50,100), CV_FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(0, 255, 0));
 	if (!det_parameters.quiet_mode)
 	{
 		cv::namedWindow("tracking_result", 1);

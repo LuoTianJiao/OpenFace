@@ -491,7 +491,7 @@ int main (int argc, char **argv)
 				if(visualise && success)
 				{
 					imshow("colour", display_image);
-					cv::waitKey(1);
+					cv::waitKey(0);
 				}
 
 				// Saving the display images (in an OS independent manner)

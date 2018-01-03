@@ -285,7 +285,7 @@ bool LandmarkDetector::DetectLandmarksInVideo(const cv::Mat_<uchar> &grayscale_i
 			face_detection_success = LandmarkDetector::DetectSingleFace(bounding_box, grayscale_image, clnf_model.face_detector_HAAR, preference_det);
 		}
 
-		// Attempt to detect landmarks using the detected face (if unseccessful the detection will be ignored)
+		// Attempt to detect landmarks using the detected face (if unsuccessful the detection will be ignored)
 		if(face_detection_success)
 		{
 			// Indicate that tracking has started as a face was detected

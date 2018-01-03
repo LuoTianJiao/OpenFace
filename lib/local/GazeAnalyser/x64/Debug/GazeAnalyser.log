@@ -1,0 +1,22 @@
+﻿  复制了 0 个文件
+  GazeEstimation.cpp
+c:\users\luotianjiao\desktop\openface\lib\3rdparty\opencv3.1\include\opencv2\core\mat.hpp(1914): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+c:\users\luotianjiao\desktop\openface\lib\3rdparty\opencv3.1\include\opencv2\core\persistence.hpp : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+c:\users\luotianjiao\desktop\openface\lib\3rdparty\opencv3.1\include\opencv2\core\utility.hpp : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+c:\users\luotianjiao\desktop\openface\lib\3rdparty\opencv3.1\include\opencv2\core\utility.hpp : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+c:\users\luotianjiao\desktop\openface\lib\local\landmarkdetector\include\landmarkdetectionvalidator.h : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+c:\program files (x86)\microsoft visual studio 14.0\vc\include\utility(200): warning C4267: “初始化”: 从“size_t”转换到“unsigned long”，可能丢失数据
+  c:\users\luotianjiao\desktop\openface\lib\3rdparty\dlib\include\dlib\image_processing\shape_predictor.h(710): note: 参见对正在编译的函数 模板 实例化“std::pair<unsigned long,unsigned long>::pair<int,unsigned __int64,void,0>(std::pair<int,unsigned __int64> &&) noexcept”的引用
+  c:\users\luotianjiao\desktop\openface\lib\3rdparty\dlib\include\dlib\image_processing\shape_predictor.h(710): note: 参见对正在编译的函数 模板 实例化“std::pair<unsigned long,unsigned long>::pair<int,unsigned __int64,void,0>(std::pair<int,unsigned __int64> &&) noexcept”的引用
+c:\users\luotianjiao\desktop\openface\lib\3rdparty\tbb\include\tbb\enumerable_thread_specific.h(112): warning C4334: “<<”: 32 位移位的结果被隐式转换为 64 位(是否希望进行 64 位移位?)
+  c:\users\luotianjiao\desktop\openface\lib\3rdparty\tbb\include\tbb\enumerable_thread_specific.h(111): note: 编译类 模板 成员函数“void tbb::interface6::internal::ets_base<tbb::ets_no_key>::free(tbb::interface6::internal::ets_base<tbb::ets_no_key>::array *)”时
+  c:\users\luotianjiao\desktop\openface\lib\3rdparty\tbb\include\tbb\enumerable_thread_specific.h(218): note: 参见对正在编译的函数 模板 实例化“void tbb::interface6::internal::ets_base<tbb::ets_no_key>::free(tbb::interface6::internal::ets_base<tbb::ets_no_key>::array *)”的引用
+  c:\users\luotianjiao\desktop\openface\lib\3rdparty\tbb\include\tbb\enumerable_thread_specific.h(245): note: 参见对正在编译的类 模板 实例化“tbb::interface6::internal::ets_base<tbb::ets_no_key>”的引用
+c:\users\luotianjiao\desktop\openface\lib\3rdparty\tbb\include\tbb\enumerable_thread_specific.h(105): warning C4334: “<<”: 32 位移位的结果被隐式转换为 64 位(是否希望进行 64 位移位?)
+  c:\users\luotianjiao\desktop\openface\lib\3rdparty\tbb\include\tbb\enumerable_thread_specific.h(104): note: 编译类 模板 成员函数“tbb::interface6::internal::ets_base<tbb::ets_no_key>::array *tbb::interface6::internal::ets_base<tbb::ets_no_key>::allocate(std::size_t)”时
+  c:\users\luotianjiao\desktop\openface\lib\3rdparty\tbb\include\tbb\enumerable_thread_specific.h(209): note: 参见对正在编译的函数 模板 实例化“tbb::interface6::internal::ets_base<tbb::ets_no_key>::array *tbb::interface6::internal::ets_base<tbb::ets_no_key>::allocate(std::size_t)”的引用
+  GazeAnalyser.vcxproj -> C:\Users\luotianjiao\Desktop\OpenFace\x64\Debug\GazeAnalyser.lib
+  复制了 0 个文件
+  复制了 0 个文件
+  复制了 0 个文件
+  复制了 0 个文件

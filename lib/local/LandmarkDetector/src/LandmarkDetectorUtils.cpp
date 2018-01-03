@@ -1105,6 +1105,13 @@ void Draw(cv::Mat img, const cv::Mat_<double>& shape2D, const cv::Mat_<int>& vis
 
 				cv::circle(img, featurePoint, 1 * draw_multiplier, cv::Scalar(0, 0, 255), thickness, CV_AA, draw_shiftbits);
 				cv::circle(img, featurePoint, 1 * draw_multiplier, cv::Scalar(255, 0, 0), thickness_2, CV_AA, draw_shiftbits);
+				char numberMark[255];
+				std::sprintf(numberMark, "%d", i);
+				//_itoa(i, numberMark, 10);
+				string text = "Mark:";
+				text += numberMark;
+				cv::putText(img, text, featurePoint, CV_FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(255, 0, 0));
+
 
 			}
 		}
@@ -1132,7 +1139,6 @@ void Draw(cv::Mat img, const cv::Mat_<double>& shape2D, const cv::Mat_<int>& vis
 				cv::line(img, featurePoint, nextFeaturePoint, cv::Scalar(255, 0, 0), thickness_2, CV_AA, draw_shiftbits);
 			else
 				cv::line(img, featurePoint, nextFeaturePoint, cv::Scalar(0, 0, 255), thickness_2, CV_AA, draw_shiftbits);
-
 
 		}
 	}
@@ -1188,7 +1194,9 @@ void Draw(cv::Mat img, const cv::Mat_<double>& shape2D)
 
 		cv::circle(img, featurePoint, 1 * draw_multiplier, cv::Scalar(0, 0, 255), thickness, CV_AA, draw_shiftbits);
 		cv::circle(img, featurePoint, 1 * draw_multiplier, cv::Scalar(255, 0, 0), thickness_2, CV_AA, draw_shiftbits);
-
+		char numberMark[10];
+		_itoa(i, numberMark, 10);
+		cv::putText(img, numberMark, featurePoint, cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 255, 0), 1);
 	}
 	
 }
