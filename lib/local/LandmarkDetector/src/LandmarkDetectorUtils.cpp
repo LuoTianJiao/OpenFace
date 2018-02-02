@@ -497,77 +497,7 @@ vector<cv::Point3d> Calculate3DEyeLandmarks(const CLNF& clnf_model, double fx, d
 // Computing eye landmarks
 vector<cv::Point2d> CalculateAllEyeLandmarks(const CLNF& clnf_model)
 {
-<<<<<<< HEAD
-	int n = shape2D.rows/2;
-	
 
-	// Drawing feature points
-	if(n >= 66)
-	{
-		for( int i = 0; i < n; ++i)
-		{		
-			if(visibilities.at<int>(i))
-			{
-				cv::Point featurePoint(cvRound(shape2D.at<double>(i) * (double)draw_multiplier), cvRound(shape2D.at<double>(i + n) * (double)draw_multiplier));
-
-				// A rough heuristic for drawn point size
-				int thickness = (int)std::ceil(3.0* ((double)img.cols) / 640.0);
-				int thickness_2 = (int)std::ceil(1.0* ((double)img.cols) / 640.0);
-
-				cv::circle(img, featurePoint, 1 * draw_multiplier, cv::Scalar(0, 0, 255), thickness, CV_AA, draw_shiftbits);
-				cv::circle(img, featurePoint, 1 * draw_multiplier, cv::Scalar(255, 0, 0), thickness_2, CV_AA, draw_shiftbits);
-				char numberMark[255];
-				std::sprintf(numberMark, "%d", i);
-				//_itoa(i, numberMark, 10);
-				string text = "Mark:";
-				text += numberMark;
-				cv::putText(img, text, featurePoint, CV_FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(255, 0, 0));
-
-
-			}
-		}
-	}
-	else if(n == 28) // drawing eyes
-	{
-		for( int i = 0; i < n; ++i)
-		{		
-			cv::Point featurePoint(cvRound(shape2D.at<double>(i) * (double)draw_multiplier), cvRound(shape2D.at<double>(i + n) * (double)draw_multiplier));
-
-			// A rough heuristic for drawn point size
-			int thickness = 1.0;
-			int thickness_2 = 1.0;
-
-			int next_point = i + 1;
-			if(i == 7)
-				next_point = 0;
-			if(i == 19)
-				next_point = 8;
-			if(i == 27)
-				next_point = 20;
-
-			cv::Point nextFeaturePoint(cvRound(shape2D.at<double>(next_point) * (double)draw_multiplier), cvRound(shape2D.at<double>(next_point + n) * (double)draw_multiplier));
-			if( i < 8 || i > 19)
-				cv::line(img, featurePoint, nextFeaturePoint, cv::Scalar(255, 0, 0), thickness_2, CV_AA, draw_shiftbits);
-			else
-				cv::line(img, featurePoint, nextFeaturePoint, cv::Scalar(0, 0, 255), thickness_2, CV_AA, draw_shiftbits);
-
-		}
-	}
-	else if(n == 6)
-	{
-		for( int i = 0; i < n; ++i)
-		{		
-			cv::Point featurePoint(cvRound(shape2D.at<double>(i) * (double)draw_multiplier), cvRound(shape2D.at<double>(i + n) * (double)draw_multiplier));
-
-			// A rough heuristic for drawn point size
-			int thickness = 1.0;
-			int thickness_2 = 1.0;
-
-			int next_point = i + 1;
-			if(i == 5)
-				next_point = 0;
-=======
->>>>>>> 87e724f2c9b8519c5045444831a83cacb1525d97
 
 	vector<cv::Point2d> to_return;
 
@@ -578,38 +508,12 @@ vector<cv::Point2d> CalculateAllEyeLandmarks(const CLNF& clnf_model)
 			clnf_model.hierarchical_model_names[i].compare("right_eye_28") == 0)
 		{
 
-<<<<<<< HEAD
-		cv::circle(img, featurePoint, 1 * draw_multiplier, cv::Scalar(0, 0, 255), thickness, CV_AA, draw_shiftbits);
-		cv::circle(img, featurePoint, 1 * draw_multiplier, cv::Scalar(255, 0, 0), thickness_2, CV_AA, draw_shiftbits);
-		char numberMark[10];
-		_itoa(i, numberMark, 10);
-		cv::putText(img, numberMark, featurePoint, cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0, 255, 0), 1);
-	}
-	
-}
 
-// Drawing detected landmarks on a face image
-void Draw(cv::Mat img, const CLNF& clnf_model)
-{
-
-	int idx = clnf_model.patch_experts.GetViewIdx(clnf_model.params_global, 0);
-
-	// Because we only draw visible points, need to find which points patch experts consider visible at a certain orientation
-	Draw(img, clnf_model.detected_landmarks, clnf_model.patch_experts.visibilities[0][idx]);
-
-	// If the model has hierarchical updates draw those too
-	for(size_t i = 0; i < clnf_model.hierarchical_models.size(); ++i)
-	{
-		if(clnf_model.hierarchical_models[i].pdm.NumberOfPoints() != clnf_model.hierarchical_mapping[i].size())
-		{
-			Draw(img, clnf_model.hierarchical_models[i]);
-=======
 			auto lmks = CalculateAllLandmarks(clnf_model.hierarchical_models[i]);
 			for (auto lmk : lmks)
 			{
 				to_return.push_back(lmk);
 			}
->>>>>>> 87e724f2c9b8519c5045444831a83cacb1525d97
 		}
 	}
 	return to_return;
