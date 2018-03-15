@@ -89,7 +89,7 @@ PDM::PDM(const PDM& other) {
 void PDM::Clamp(cv::Mat_<float>& local_params, cv::Vec6d& params_global, const FaceModelParameters& parameters)
 {
 	double n_sigmas = 3;
-	cv::MatConstIterator_<double> e_it  = this->eigen_values.begin();
+	cv::MatConstIterator_<double> e_it  = this->eigen_values.begin();  //e_it中存的是特征向量对应的特征值
 	cv::MatIterator_<float> p_it =  local_params.begin();
 
 	double v;
@@ -98,7 +98,7 @@ void PDM::Clamp(cv::Mat_<float>& local_params, cv::Vec6d& params_global, const F
 	for(; p_it != local_params.end(); ++p_it, ++e_it)
 	{
 		// Work out the maximum value
-		v = n_sigmas*sqrt(*e_it);
+		v = n_sigmas*sqrt(*e_it);    //将PDM形状限制在-3sqrt(lamda)到3sqrt(lamda)之间
 
 		// if the values is too extreme clamp it
 		if(fabs(*p_it) > v)
@@ -183,7 +183,7 @@ void PDM::CalcParams(cv::Vec6d& out_params_global, const cv::Rect_<double>& boun
 	// get the shape instance based on local params
 	cv::Mat_<double> current_shape(mean_shape.size());
 
-	CalcShape3D(current_shape, params_local);
+	CalcShape3D(current_shape, params_local);//计算出current_shape的矩阵
 
 	// rotate the shape
 	cv::Matx33d rotation_matrix = Utilities::Euler2RotationMatrix(rotation);
@@ -211,7 +211,7 @@ void PDM::CalcParams(cv::Vec6d& out_params_global, const cv::Rect_<double>& boun
 	double ty = bounding_box.y + bounding_box.height / 2;
 
 	// Correct it so that the bounding box is just around the minimum and maximum point in the initialised face	
-	tx = tx - scaling * (min_x + max_x)/2;
+	tx = tx - scaling * (min_x + max_x)/2;  //窗口中心-shape中心=偏移
     ty = ty - scaling * (min_y + max_y)/2;
 
 	out_params_global = cv::Vec6d(scaling, rotation[0], rotation[1], rotation[2], tx, ty);
@@ -335,7 +335,7 @@ void PDM::ComputeRigidJacobian(const cv::Mat_<float>& p_local, const cv::Vec6d& 
 		}		
 	}
 
-	Jacob_t_w = Jacob_w.t();
+	Jacob_t_w = Jacob_w.t();  //转置后赋给。。
 }
 
 //===========================================================================

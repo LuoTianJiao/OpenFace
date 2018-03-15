@@ -94,7 +94,7 @@ void Patch_experts::Response(vector<cv::Mat_<float> >& patch_expert_responses, c
 							 const PDM& pdm, const cv::Vec6d& params_global, const cv::Mat_<double>& params_local, int window_size, int scale)
 {
 
-	int view_id = GetViewIdx(params_global, scale);		
+	int view_id = GetViewIdx(params_global, scale);  //??
 
 	int n = pdm.NumberOfPoints();
 		

@@ -215,7 +215,7 @@ bool LandmarkDetector::DetectLandmarksInVideo(const cv::Mat_<uchar> &grayscale_i
 	// and using a smaller search area
 
 	// Indicating that this is a first detection in video sequence or after restart
-	bool initial_detection = !clnf_model.IsInitialized();
+	bool initial_detection = !clnf_model.IsInitialized();  //初次运行时跟踪模块没有初始化
 
 	// Only do it if there was a face detection at all
 	if(clnf_model.IsInitialized())
@@ -254,9 +254,9 @@ bool LandmarkDetector::DetectLandmarksInVideo(const cv::Mat_<uchar> &grayscale_i
 
 	// This is used for both detection (if it the tracking has not been initialised yet) or if the tracking failed (however we do this every n frames, for speed)
 	// This also has the effect of an attempt to reinitialise just after the tracking has failed, which is useful during large motions
-	if((!clnf_model.IsInitialized() && (clnf_model.failures_in_a_row + 1) % (params.reinit_video_every * 6) == 0)
+	if((!clnf_model.IsInitialized() && (clnf_model.failures_in_a_row + 1) % (params.reinit_video_every * 6) == 0)   //正常情况下连续4帧失败重新检测一遍人脸
 		|| (clnf_model.IsInitialized() && !clnf_model.detection_success && params.reinit_video_every > 0 && clnf_model.failures_in_a_row % params.reinit_video_every == 0))
-	{
+	{  //检测代码
 
 		cv::Rect_<double> bounding_box;
 
@@ -310,7 +310,7 @@ bool LandmarkDetector::DetectLandmarksInVideo(const cv::Mat_<uchar> &grayscale_i
 			bool landmark_detection_success = clnf_model.DetectLandmarks(grayscale_image, params);
 
 			// If landmark reinitialisation unsucessful continue from previous estimates
-			// if it's initial detection however, do not care if it was successful as the validator might be wrong, so continue trackig
+			// if it's initial detection however, do not care if it was successful as the validator might be wrong, so continue tracking
 			// regardless
 			if(!initial_detection && !landmark_detection_success)
 			{
@@ -423,7 +423,7 @@ bool LandmarkDetector::DetectLandmarksInImage(const cv::Mat_<uchar> &grayscale_i
 		}
 
 		// calculate the local and global parameters from the generated 2D shape (mapping from the 2D to 3D because camera params are unknown)
-		clnf_model.pdm.CalcParams(clnf_model.params_global, bounding_box, clnf_model.params_local, rotation_hypotheses[hypothesis]);
+		clnf_model.pdm.CalcParams(clnf_model.params_global, bounding_box, clnf_model.params_local, rotation_hypotheses[hypothesis]);  //这一步应该是计算初始的clnf_model.params_global值
 	
 		bool success = clnf_model.DetectLandmarks(grayscale_image, params);	
 

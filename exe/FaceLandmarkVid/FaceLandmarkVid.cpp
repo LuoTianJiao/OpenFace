@@ -141,7 +141,7 @@ int main (int argc, char **argv)
 		{
 
 			// Reading the images
-			cv::Mat_<uchar> grayscale_image = sequence_reader.GetGrayFrame();
+			cv::Mat_<uchar> grayscale_image = sequence_reader.GetGrayFrame();//GetNextFrame()函数中已经生成灰度图，这个函数只是把灰度图调了出来
 
 			// The actual facial landmark detection / tracking
 			bool detection_success = LandmarkDetector::DetectLandmarksInVideo(grayscale_image, face_model, det_parameters);
@@ -153,21 +153,23 @@ int main (int argc, char **argv)
 			// If tracking succeeded and we have an eye model, estimate gaze
 			if (detection_success && face_model.eye_model)
 			{
-				GazeAnalysis::EstimateGaze(face_model, gazeDirection0, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, true);
-				GazeAnalysis::EstimateGaze(face_model, gazeDirection1, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, false);
+				//GazeAnalysis::EstimateGaze(face_model, gazeDirection0, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, true);
+				//GazeAnalysis::EstimateGaze(face_model, gazeDirection1, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, false);
 			}
 
 			// Work out the pose of the head from the tracked model
-			cv::Vec6d pose_estimate = LandmarkDetector::GetPose(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy);
+			//cv::Vec6d pose_estimate = LandmarkDetector::GetPose(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy);
 
 			// Keeping track of FPS
-			fps_tracker.AddFrame();
+			fps_tracker.AddFrame(); //记录一个时间，以供下一次判断是否在跟踪时间内
 
 			// Displaying the tracking visualizations
 			visualizer.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy);
 			visualizer.SetObservationLandmarks(face_model.detected_landmarks, face_model.detection_certainty, detection_success);
-			visualizer.SetObservationPose(pose_estimate, face_model.detection_certainty);
-			visualizer.SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(face_model), LandmarkDetector::Calculate3DEyeLandmarks(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy), face_model.detection_certainty);
+			visualizer.fatigueDrivingTest(face_model.detected_landmarks);
+
+			//visualizer.SetObservationPose(pose_estimate, face_model.detection_certainty);
+			//visualizer.SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(face_model), LandmarkDetector::Calculate3DEyeLandmarks(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy), face_model.detection_certainty);
 			visualizer.SetFps(fps_tracker.GetFPS());
 			// detect key presses (due to pecularities of OpenCV, you can get it when displaying images)
 			char character_press = visualizer.ShowObservation();

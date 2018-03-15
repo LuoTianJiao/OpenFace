@@ -51,13 +51,13 @@ class PDM{
 	public:    
     
 		// The 3D mean shape vector of the PDM [x1,..,xn,y1,...yn,z1,...,zn]
-		cv::Mat_<double> mean_shape;	
+		cv::Mat_<double> mean_shape;	//平均脸Xbar
   
 		// Principal components or variation bases of the model, 
-		cv::Mat_<double> princ_comp;	
+		cv::Mat_<double> princ_comp;	//主成分P
 
 		// Eigenvalues (variances) corresponding to the bases
-		cv::Mat_<double> eigen_values;	
+		cv::Mat_<double> eigen_values;	//特征值  对应偏移
 
 		PDM(){;}
 		

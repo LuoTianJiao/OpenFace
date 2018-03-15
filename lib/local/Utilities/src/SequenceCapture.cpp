@@ -391,10 +391,10 @@ void SequenceCapture::SetCameraIntrinsics(float fx, float fy, float cx, float cy
 cv::Mat SequenceCapture::GetNextFrame()
 {
 
-	if (is_webcam || !is_image_seq)
+	if (is_webcam || !is_image_seq)//摄像头采集、或者输入视频流
 	{
 
-		bool success = capture.read(latest_frame);
+		bool success = capture.read(latest_frame);  //该函数读出当前一帧数据
 
 		if (!success)
 		{
@@ -403,7 +403,7 @@ cv::Mat SequenceCapture::GetNextFrame()
 		}
 
 		// Recording the timestamp
-		if (!is_webcam)
+		if (!is_webcam)        //输入视频流
 		{
 			time_stamp = frame_num * (1.0 / fps);
 		}

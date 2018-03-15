@@ -51,7 +51,7 @@ namespace Utilities
 	class Visualizer {
 
 	public:
-
+		bool fatigueDrivingTest(const cv::Mat_<double>& landmarks_2D);
 		// The constructor for the visualizer that specifies what to visualize
 		Visualizer(std::vector<std::string> arguments);
 		Visualizer(bool vis_track, bool vis_hog, bool vis_align);

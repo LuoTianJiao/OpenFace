@@ -289,7 +289,7 @@ void FaceAnalyser::PredictStaticAUsAndComputeFeatures(const cv::Mat& frame, cons
 	// Stack with the actual feature point locations (without mean)
 	cv::Mat_<double> locs = princ_comp_d * geom_descriptor_frame.t();
 
-	cv::hconcat(locs.t(), geom_descriptor_frame.clone(), geom_descriptor_frame);
+	cv::hconcat(locs.t(), geom_descriptor_frame.clone(), geom_descriptor_frame); //将两个矩阵按行合并到geom_descriptor_frame
 	
 	// First convert the face image to double representation as a row vector, TODO rem
 	//cv::Mat_<uchar> aligned_face_cols(1, aligned_face_for_au.cols * aligned_face_for_au.rows * aligned_face_for_au.channels(), aligned_face_for_au.data, 1);

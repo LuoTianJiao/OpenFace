@@ -516,8 +516,8 @@ void CLNF::Read(string main_location)
 	// Initialising default values for the rest of the variables
 
 	// local parameters (shape)
-	params_local.create(pdm.NumberOfModes(), 1);
-	params_local.setTo(0.0);
+	params_local.create(pdm.NumberOfModes(), 1); //n行1列
+	params_local.setTo(0.0);   //全部初始化为0.0
 
 	// global parameters (pose) [scale, euler_x, euler_y, euler_z, tx, ty]
 	params_global = cv::Vec6d(0, 0, 0, 0, 0, 0);
@@ -615,7 +615,7 @@ bool CLNF::DetectLandmarks(const cv::Mat_<uchar> &image, FaceModelParameters& pa
 			// Fit the part based model PDM
 			hierarchical_models[part_model].pdm.CalcParams(hierarchical_models[part_model].params_global, hierarchical_models[part_model].params_local, part_model_locs);
 
-			// Only do this if we don't need to upsample
+			// Only do this if we don't need to upsample上采样（上采样的实质是内插或插值）
 			if (params_global[0] > 0.9 * hierarchical_models[part_model].patch_experts.patch_scaling[0])
 			{
 				parts_used = true;
@@ -707,7 +707,7 @@ bool CLNF::Fit(const cv::Mat_<uchar>& im, const std::vector<int>& window_sizes, 
 	for(int scale = 0; scale < num_scales; scale++)
 	{
 
-		int window_size = window_sizes[scale];
+		int window_size = window_sizes[scale];  //这个window_size可能是指patch_experts的检测区域窗口大小
 
 		if(window_size == 0 ||  0.9 * patch_experts.patch_scaling[scale] > params_global[0])
 			continue;
@@ -1122,7 +1122,7 @@ cv::Mat_<double> CLNF::GetShape(double fx, double fy, double cx, double cy) cons
 
 		shape3d = shape3d.t() * cv::Mat(R).t();
 	
-		// from the weak perspective model can determine the average depth of the object
+		// from the weak perspective model can determine the average depth of the object  //深度信息是这么得出来的
 		double Zavg = fx / params_global[0];	
 
 

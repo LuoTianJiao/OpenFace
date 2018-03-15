@@ -73,7 +73,7 @@ namespace Utilities
 	{
 		double current_time = cv::getTickCount() / cv::getTickFrequency();
 		// Remove old history
-		while (frame_times.size() > 0 && (current_time - frame_times.front()) > history_length)
+		while (frame_times.size() > 0 && (current_time - frame_times.front()) > history_length) //判断是否在跟踪时间内，如果不在则删除，frame_times只存储两秒内的**
 			frame_times.pop();
 	}
 

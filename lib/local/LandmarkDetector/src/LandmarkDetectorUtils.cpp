@@ -691,14 +691,14 @@ bool DetectSingleFaceHOG(cv::Rect_<double>& o_region, const cv::Mat_<uchar>& int
 
 		// keep the most confident one or the one closest to preference point if set
 		double best_so_far;
-		if(use_preferred)
+		if(use_preferred)  //这边可以设置人脸参考位置
 		{			
 			best_so_far = sqrt((preference.x - (face_detections[0].width/2 + face_detections[0].x)) * (preference.x - (face_detections[0].width/2 + face_detections[0].x)) + 
 							   (preference.y - (face_detections[0].height/2 + face_detections[0].y)) * (preference.y - (face_detections[0].height/2 + face_detections[0].y)));
 		}
 		else
 		{
-			best_so_far = confidences[0];
+			best_so_far = confidences[0];  
 		}
 		int bestIndex = 0;
 
@@ -716,14 +716,14 @@ bool DetectSingleFaceHOG(cv::Rect_<double>& o_region, const cv::Mat_<uchar>& int
 			}
 			else
 			{
-				dist = confidences[i];
+				dist = confidences[i];  
 				better = dist > best_so_far;
 			}
 
 			// Pick a closest face
 			if(better)
 			{
-				best_so_far = dist;
+				best_so_far = dist;   //选置信度最高的方框为人脸区域
 				bestIndex = i;
 			}									
 		}

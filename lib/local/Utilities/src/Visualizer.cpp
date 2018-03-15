@@ -133,6 +133,58 @@ void Visualizer::SetObservationHOG(const cv::Mat_<double>& hog_descriptor, int n
 
 }
 
+double pointDistance(cv::Point2d point1, cv::Point2d point2)
+{
+	double dis = sqrt(float((point1.x - point2.x)*(point1.x - point2.x) + (point1.y - point2.y)*(point1.y - point2.y)));
+	return dis;
+}
+bool Visualizer::fatigueDrivingTest(const cv::Mat_<double>& landmarks_2D)
+{
+	double L1, L2, L3, L4, L5, L6;
+	if (landmarks_2D.empty())
+	{
+		return false;
+	}
+	int n = landmarks_2D.rows / 2;
+	cv::Point2d point62(landmarks_2D.at<double>(61), landmarks_2D.at<double>(61 + n));
+	cv::Point2d point63(landmarks_2D.at<double>(62), landmarks_2D.at<double>(62 + n));
+	cv::Point2d point64(landmarks_2D.at<double>(63), landmarks_2D.at<double>(63 + n));
+
+	cv::Point2d point66(landmarks_2D.at<double>(65), landmarks_2D.at<double>(65 + n));
+	cv::Point2d point67(landmarks_2D.at<double>(66), landmarks_2D.at<double>(66 + n));
+	cv::Point2d point68(landmarks_2D.at<double>(67), landmarks_2D.at<double>(67 + n));
+
+	cv::Point2d point51(landmarks_2D.at<double>(50), landmarks_2D.at<double>(50 + n));
+	cv::Point2d point52(landmarks_2D.at<double>(51), landmarks_2D.at<double>(51 + n));
+	cv::Point2d point53(landmarks_2D.at<double>(52), landmarks_2D.at<double>(52 + n));
+
+	cv::Point2d point57(landmarks_2D.at<double>(56), landmarks_2D.at<double>(56 + n));
+	cv::Point2d point58(landmarks_2D.at<double>(57), landmarks_2D.at<double>(57 + n));
+	cv::Point2d point59(landmarks_2D.at<double>(58), landmarks_2D.at<double>(58 + n));
+
+	L1 = pointDistance(point62, point68);
+	L2 = pointDistance(point63, point67);
+	L3 = pointDistance(point64, point66);
+
+	L4 = pointDistance(point51, point59);
+	L5 = pointDistance(point52, point58);
+	L6 = pointDistance(point53, point57);
+
+	double openRate = (L1 + L2 + L3) / (L4 + L5 + L6);
+
+// 	if (openRate > 0.3)
+// 		return true;
+// 	else
+// 		return false;
+	if (openRate > 0.3)
+	{
+		std::string fpsSt("Fatigue Driving!!");
+		cv::putText(captured_image, fpsSt, cv::Point(100, 500), CV_FONT_HERSHEY_SIMPLEX, 2, CV_RGB(255, 0, 0), 2, CV_AA);
+		return true;
+	}
+	else
+		return false;
+}
 
 void Visualizer::SetObservationLandmarks(const cv::Mat_<double>& landmarks_2D, double confidence, bool success, const cv::Mat_<int>& visibilities)
 {
@@ -153,7 +205,24 @@ void Visualizer::SetObservationLandmarks(const cv::Mat_<double>& landmarks_2D, d
 				int thickness = (int)std::ceil(3.0* ((double)captured_image.cols) / 640.0);
 				int thickness_2 = (int)std::ceil(1.0* ((double)captured_image.cols) / 640.0);
 
-				cv::circle(captured_image, featurePoint, 1 * draw_multiplier, cv::Scalar(0, 0, 255), thickness, CV_AA, draw_shiftbits);
+// 				char numberofmark[255];
+// 				std::sprintf(numberofmark, "%d", (int)i);
+// 				std::string fpsSt("num:");
+// 				fpsSt += numberofmark;
+// 				//printf(numberofmark);
+// 				
+// 				cv::putText(captured_image, fpsSt, featurePoint, CV_FONT_HERSHEY_SIMPLEX,1, CV_RGB(255, 255, 255), 1, CV_AA);
+// 				//cv::putText(captured_image, numberofmark, featurePoint, cv::FONT_HERSHEY_PLAIN,3, cv::Scalar(255, 255, 255));
+				//if (i>=48&&i<=67) //mouth area
+				if (i >= 61 && i <= 63||i >= 65 && i <= 67)
+				{
+					cv::circle(captured_image, featurePoint, 1 * draw_multiplier, cv::Scalar(255, 255, 255), thickness, CV_AA, draw_shiftbits);
+				}
+				else
+				{
+					cv::circle(captured_image, featurePoint, 1 * draw_multiplier, cv::Scalar(0, 0, 255), thickness, CV_AA, draw_shiftbits);
+				}
+				
 				cv::circle(captured_image, featurePoint, 1 * draw_multiplier, cv::Scalar(255, 0, 0), thickness_2, CV_AA, draw_shiftbits);
 
 			}

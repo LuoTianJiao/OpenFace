@@ -72,7 +72,7 @@ public:
 	// The local and global parameters describing the current model instance (current landmark detections)
 
 	// Local parameters describing the non-rigid shape
-	cv::Mat_<double>    params_local;
+	cv::Mat_<double>    params_local;  //应该是每个点的参数（可能是位置坐标）
 
 	// Global parameters describing the rigid shape [scale, euler_x, euler_y, euler_z, tx, ty]
 	cv::Vec6d           params_global;

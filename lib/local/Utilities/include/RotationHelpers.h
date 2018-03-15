@@ -56,7 +56,7 @@ namespace Utilities
 		double c2 = cos(eulerAngles[1]);
 		double c3 = cos(eulerAngles[2]);
 
-		rotation_matrix(0, 0) = c2 * c3;
+		rotation_matrix(0, 0) = c2 * c3;  //旋转矩阵、、与avm中的相同
 		rotation_matrix(0, 1) = -c2 *s3;
 		rotation_matrix(0, 2) = s2;
 		rotation_matrix(1, 0) = c1 * s3 + c3 * s1 * s2;
