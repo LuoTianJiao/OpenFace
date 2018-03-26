@@ -606,7 +606,7 @@ bool CLNF::DetectLandmarks(const cv::Mat_<uchar> &image, FaceModelParameters& pa
 			cv::Mat_<double> part_model_locs(n_part_points * 2, 1, 0.0);
 
 			// Extract the corresponding landmarks
-			for (size_t mapping_ind = 0; mapping_ind < mappings.size(); ++mapping_ind)
+			for (size_t mapping_ind = 0; mapping_ind < mappings.size(); ++mapping_ind)//脸部关键点模型在其它模型（例如人眼模型）上的对应点
 			{
 				part_model_locs.at<double>(mappings[mapping_ind].second) = detected_landmarks.at<double>(mappings[mapping_ind].first);
 				part_model_locs.at<double>(mappings[mapping_ind].second + n_part_points) = detected_landmarks.at<double>(mappings[mapping_ind].first + this->pdm.NumberOfPoints());

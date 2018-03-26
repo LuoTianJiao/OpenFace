@@ -260,6 +260,7 @@ void FaceModelParameters::init()
 
 	// By default use HOG SVM
 	curr_face_detector = HOG_SVM_DETECTOR;
+	//curr_face_detector = HAAR_DETECTOR;
 
 }
 

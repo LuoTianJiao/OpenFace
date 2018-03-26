@@ -277,7 +277,7 @@ void CCNF_patch_expert::Response(cv::Mat_<float> &area_of_interest, cv::Mat_<flo
 	cv::Mat integral_image, integral_image_sq;
 	
 	cv::Mat_<float> neuron_response;
-
+	int mn = neurons.size();
 	// responses from the neural layers
 	for(size_t i = 0; i < neurons.size(); i++)
 	{		

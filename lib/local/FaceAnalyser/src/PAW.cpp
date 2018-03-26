@@ -263,6 +263,7 @@ PAW::PAW(const cv::Mat_<float>& destination_shape, const cv::Mat_<int>& triangul
 				triangle_id.at<int>(y, x) = curr_tri;
                 pixel_mask.at<uchar>(y, x) = 1;
 			}	
+			//pixel_mask.at<uchar>(y, x) = 1;
 		}
 	}    	
 

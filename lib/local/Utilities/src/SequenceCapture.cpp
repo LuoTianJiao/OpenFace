@@ -215,8 +215,15 @@ bool SequenceCapture::OpenWebcam(int device, int image_width, int image_height, 
 	latest_gray_frame = cv::Mat();
 
 	capture.open(device);
-	capture.set(CV_CAP_PROP_FRAME_WIDTH, image_width);
-	capture.set(CV_CAP_PROP_FRAME_HEIGHT, image_height);
+	//capture.set(CV_CAP_PROP_FRAME_WIDTH, image_width);
+	//capture.set(CV_CAP_PROP_FRAME_HEIGHT, image_height);
+	capture.set(CV_CAP_PROP_FRAME_WIDTH, 1920);
+	capture.set(CV_CAP_PROP_FRAME_HEIGHT, 1080);
+	double maa = capture.get(CV_CAP_PROP_FOURCC);
+	//capture.set(CV_CAP_PROP_FOURCC,( 'M','J', 'P', 'G'));
+	//capture.set(CV_CAP_PROP_FOURCC, ('Y', 'U', 'V','2'));
+	//capture.set(CV_CAP_PROP_FOURCC, ('H', '2', '6', '4'));
+	capture.set(CV_CAP_PROP_FPS, 30.0);
 
 	is_webcam = true;
 	is_image_seq = false;

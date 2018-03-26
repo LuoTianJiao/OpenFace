@@ -4,7 +4,6 @@ c:\users\luotianjiao\desktop\openface\lib\3rdparty\opencv3.1\include\opencv2\cor
 c:\users\luotianjiao\desktop\openface\lib\3rdparty\opencv3.1\include\opencv2\core\persistence.hpp : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
 c:\users\luotianjiao\desktop\openface\lib\3rdparty\opencv3.1\include\opencv2\core\utility.hpp : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
 c:\users\luotianjiao\desktop\openface\lib\3rdparty\opencv3.1\include\opencv2\core\utility.hpp : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
-c:\users\luotianjiao\desktop\openface\lib\local\landmarkdetector\include\landmarkdetectionvalidator.h : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
 c:\program files (x86)\microsoft visual studio 14.0\vc\include\utility(200): warning C4267: “初始化”: 从“size_t”转换到“unsigned long”，可能丢失数据
   c:\users\luotianjiao\desktop\openface\lib\3rdparty\dlib\include\dlib\image_processing\shape_predictor.h(710): note: 参见对正在编译的函数 模板 实例化“std::pair<unsigned long,unsigned long>::pair<int,unsigned __int64,void,0>(std::pair<int,unsigned __int64> &&) noexcept”的引用
   c:\users\luotianjiao\desktop\openface\lib\3rdparty\dlib\include\dlib\image_processing\shape_predictor.h(710): note: 参见对正在编译的函数 模板 实例化“std::pair<unsigned long,unsigned long>::pair<int,unsigned __int64,void,0>(std::pair<int,unsigned __int64> &&) noexcept”的引用

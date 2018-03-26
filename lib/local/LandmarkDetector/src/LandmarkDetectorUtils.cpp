@@ -648,6 +648,9 @@ bool DetectFacesHOG(vector<cv::Rect_<double> >& o_regions, const cv::Mat_<uchar>
 	dlib::cv_image<uchar> cv_grayscale(upsampled_intensity);
 
 	std::vector<dlib::full_detection> face_detections;
+// 	detector.scanner.set_min_pyramid_layer_size(300, 300);
+// 	detector.scanner.set_detection_window_size(120, 120);
+// 	detector.scanner.set_max_pyramid_levels(100);
 	detector(cv_grayscale, face_detections, -0.2);
 
 	// Convert from int bounding box do a double one with corrections

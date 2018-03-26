@@ -116,7 +116,9 @@ int main (int argc, char **argv)
 	Utilities::SequenceCapture sequence_reader;
 
 	// A utility for visualizing the results
-	Utilities::Visualizer visualizer(arguments);
+	//Utilities::Visualizer visualizer(arguments);
+
+	Utilities::Visualizer visualizer(true, true, true);
 
 	// Tracking FPS for visualization
 	Utilities::FpsTracker fps_tracker;
@@ -126,9 +128,24 @@ int main (int argc, char **argv)
 	{
 
 		// The sequence reader chooses what to open based on command line arguments provided
-		if(!sequence_reader.Open(arguments))
-			break;
+		//if(!sequence_reader.Open(arguments))
+		//	break;
 
+
+		//INFO_STREAM("Device or file opened");
+		if (!sequence_reader.Open(arguments))
+		{
+			// If failed to open because no input files specified, attempt to open a webcam
+			
+				// If that fails, revert to webcam
+				INFO_STREAM("No input specified, attempting to open a webcam 0");
+				if (!sequence_reader.OpenWebcam(0))
+				{
+					ERROR_STREAM("Failed to open the webcam");
+					break;
+				}
+			
+		}
 		INFO_STREAM("Device or file opened");
 		
 		if (sequence_reader.IsWebcam())
@@ -136,6 +153,8 @@ int main (int argc, char **argv)
 			INFO_STREAM("WARNING: using a webcam in feature extraction, Action Unit predictions will not be as accurate in real-time webcam mode");
 			INFO_STREAM("WARNING: using a webcam in feature extraction, forcing visualization of tracking to allow quitting the application (press q)");
 			visualizer.vis_track = true;
+			visualizer.vis_hog = true;
+			visualizer.vis_align = true;
 		}
 
 		cv::Mat captured_image;

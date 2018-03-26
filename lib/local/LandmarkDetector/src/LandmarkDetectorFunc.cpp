@@ -268,6 +268,7 @@ bool LandmarkDetector::DetectLandmarksInVideo(const cv::Mat_<uchar> &grayscale_i
 		}
 
 		cv::Point preference_det(-1, -1);
+		//clnf_model.Reset(0.5, 0.5);
 		if(clnf_model.preference_det.x != -1 && clnf_model.preference_det.y != -1)
 		{
 			preference_det.x = clnf_model.preference_det.x * grayscale_image.cols;

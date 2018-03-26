@@ -839,7 +839,7 @@ double DetectionValidator::CheckCNN_tbb(const cv::Mat_<double>& warped_img, int 
 	input_maps.push_back(img);
 
 	vector<cv::Mat_<float> > outputs;
-
+	int mn = cnn_layer_types[view_id].size();
 	for (size_t layer = 0; layer < cnn_layer_types[view_id].size(); ++layer)
 	{
 		// Determine layer type
